@@ -1,0 +1,7 @@
+/release/
+/dist/
+__pycache__/
+*.pyc
+*.log
+*.raw
+*.bin.readback
