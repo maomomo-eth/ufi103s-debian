@@ -27,6 +27,7 @@
 - 修复后的 1.2 GHz boot image
 - Debian sparse rootfs
 - Linux fastboot 刷写脚本
+- 9008/EDL 完整 eMMC 备份脚本
 - SHA-256 校验文件
 
 发布包**不包含任何设备专属校准分区**。刷机时必须使用目标设备自己的：
@@ -48,6 +49,13 @@ sha256sum -c SHA256SUMS
 ```
 
 脚本会要求输入 `UFI103S` 二次确认。写完后需要物理断电再上电，不能依赖部分 lk2nd 环境中的 `fastboot reboot`。
+
+完整 eMMC 备份方法见 [EDL 备份指南](docs/EDL_BACKUP.md)：
+
+```bash
+EDL=/绝对路径/edl \
+./scripts/backup-full-emmc.sh /绝对路径/新备份目录
+```
 
 ## 默认访问信息
 
@@ -104,4 +112,3 @@ qcom-q6v5-mss 4080000.remoteproc: unable to resolve mpss region
 - [bkerler/edl](https://github.com/bkerler/edl)
 
 第三方 Debian 镜像的批处理文件标注作者为 `jsbsbxjxh66`。原包没有附带许可证，因此完整二进制仅放在用户指定的私有仓库 Release 中，不主张其版权，也不授权再次公开分发。仓库中原创脚本和文档采用 MIT License；第三方 firmware、bootloader、kernel 和 rootfs 不在 MIT License 覆盖范围内。
-

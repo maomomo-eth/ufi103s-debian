@@ -41,6 +41,15 @@ modemst2.bin
 
 强烈建议在 9008 下额外保存完整 eMMC。实测设备容量为 `3909091328` 字节，但应以目标设备实际容量为准。
 
+完整备份脚本会自动读取实际容量、导出 GPT 和关键分区、校验全盘镜像大小并生成 SHA-256：
+
+```bash
+EDL=/绝对路径/edl \
+./scripts/backup-full-emmc.sh /绝对路径/新备份目录
+```
+
+详细说明见 [9008/EDL 完整备份](EDL_BACKUP.md)。
+
 如果当前已处于支持 `oem dump` 的 lk2nd fastboot，可执行：
 
 ```bash
@@ -150,4 +159,3 @@ adb shell ping -c 3 1.1.1.1
 ## 10. 恢复
 
 如果无法启动但还能进入 `05c6:9008`，优先从完整 eMMC 备份恢复。不要先反复尝试其他板型的 SBL1、CDT 或 aboot。
-

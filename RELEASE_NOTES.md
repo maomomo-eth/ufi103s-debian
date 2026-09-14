@@ -1,4 +1,4 @@
-# v1.0.0：UFI103S V03 Debian 实机验证版
+# v1.0.1：UFI103S V03 Debian 实机验证版
 
 这是私有备份 Release，仅适用于 PCB 丝印 `UFI103S_V03` 的 MSM8916 设备。
 
@@ -8,6 +8,7 @@
 - UFI103S 对应 GPT、CDT 与 boot chain
 - 修复 MPSS 内存节点的 1.2 GHz boot image
 - Linux fastboot 一键刷写脚本
+- 9008/EDL 完整 eMMC 备份脚本
 - 完整 SHA-256 校验文件
 
 ## 实机结果
@@ -25,3 +26,13 @@
 
 第三方二进制来源和许可限制见 `THIRD_PARTY.md`。
 
+## v1.0.1 新增
+
+`scripts/backup-full-emmc.sh` 可在 `05c6:9008` 下自动：
+
+- 读取实际 eMMC 容量与 GPT
+- 导出完整 eMMC 镜像
+- 保存 GPT 和关键分区副本
+- 核对全盘镜像字节数
+- 生成并复核 `SHA256SUMS`
+- 拒绝覆盖已有备份目录
