@@ -61,8 +61,8 @@ required_images=(
     sbl1.mbn
     tz.mbn
     aboot.bin
-    boot-1.2-modem-fixed.img
-    rootfs.img
+    boot-debian12-6.4-ufix0x.img
+    rootfs-debian12-ufi103s-fixed.img
 )
 calibration_images=(fsc.bin fsg.bin modemst1.bin modemst2.bin)
 
@@ -127,11 +127,14 @@ for name in "${calibration_images[@]}"; do
     "$fastboot_bin" flash "$partition" "$calibration_dir/$name"
 done
 
-echo "写入 Debian boot 与 rootfs……"
-"$fastboot_bin" erase boot
+echo "写入 Debian 12 rootfs……"
 "$fastboot_bin" erase rootfs
-"$fastboot_bin" flash boot "$image_dir/boot-1.2-modem-fixed.img"
-"$fastboot_bin" -S 200m flash rootfs "$image_dir/rootfs.img"
+"$fastboot_bin" -S 200m flash rootfs "$image_dir/rootfs-debian12-ufi103s-fixed.img"
+
+# 最后切换 boot，避免 rootfs 传输期间断电后启动新旧不匹配的系统。
+echo "写入 Debian 12 boot……"
+"$fastboot_bin" erase boot
+"$fastboot_bin" flash boot "$image_dir/boot-debian12-6.4-ufix0x.img"
 
 # 最后写 aboot，避免传输 rootfs 期间断电后误进入不完整系统。
 "$fastboot_bin" flash aboot "$image_dir/aboot.bin"
@@ -140,6 +143,5 @@ cat <<'EOF'
 
 刷写完成。
 请物理断电再上电，不要依赖 fastboot reboot。
-启动后热点为 4G-WIFI，默认密码 12345678；Debian 用户 user，默认密码 1。
+启动后热点为 4G-WIFI，默认密码 12345678；首次登录后请立即修改默认凭据。
 EOF
-

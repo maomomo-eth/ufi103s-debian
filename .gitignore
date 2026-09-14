@@ -1,5 +1,12 @@
 /release/
 /dist/
+/backup/
+**/original-full-emmc.bin
+**/fsc.bin
+**/fsg.bin
+**/modemst1.bin
+**/modemst2.bin
+**/ssh_host_*_key
 __pycache__/
 *.pyc
 *.log

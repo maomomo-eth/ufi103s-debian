@@ -1,80 +1,78 @@
-# 实机刷机复盘
+# UFI103S Debian 刷机与射频故障复盘
 
-## 硬件与备份
+## 硬件与恢复基线
 
-目标板丝印为 `UFI103S_V03`，SoC 是 MSM8916，eMMC 容量为 3,909,091,328 字节。开始写盘前完成了全盘备份和关键分区拆分备份，并校验 SHA-256。
+目标板丝印为 `UFI103S_V03`，SoC 为 MSM8916，eMMC 实测容量 `3909091328` 字节。写盘前完成完整 eMMC 备份和 `fsc/fsg/modemst1/modemst2` 分区备份，并复核 SHA-256。所有设备回读数据均保存在仓库之外。
 
-完整备份没有进入 Git 仓库或 Release。
+## 自行构建版本为何没有继续使用
 
-## 第一次构建为何失败
+最初用 OpenStick Builder 构建 Debian 13，并修正 lk2nd compatible。boot、rootfs 和 aboot 的分区回读均与写入文件一致，但冷启动后只有红灯，没有 USB gadget 或热点。
 
-最初使用 OpenStick Builder 构建 Debian 13，并把 lk2nd compatible 修正为 `thwc,ufi001c`。boot、rootfs 和 aboot 的分区回读均能与构建文件匹配，但设备冷启动后只有红灯，没有 USB gadget 或热点。
+这证明写入校验成功只能说明存储层正确，不能证明 boot chain、kernel、DTB 和 firmware 的组合适配该板。由于没有串口日志，无法把红灯故障继续缩小到单一启动阶段，因此回到已知可启动的第三方启动链建立恢复基线。
 
-这说明“写入成功”不等于“整套 firmware 与该板兼容”。最终可确认自构建的 boot chain/boot 组合与实机存在兼容问题，但没有串口日志，无法把故障进一步缩小到单一 stage。
+## Debian 11 阶段：boot DTB 缺少 MPSS 内存节点
 
-## 第三方镜像验证
-
-第三方归档 SHA-256：
-
-```text
-1ec268a72c679d0126d4b94f93141efa6d0220eebfcfa8ec8324e83a340e2593
-```
-
-归档中的 boot DTB model 明确为：
-
-```text
-Handsome OpenStick jsbsbxjxh66-bianyi UFI103s
-```
-
-使用第三方 GPT、CDT、SBL1、RPM、TZ、HYP、aboot、boot 和 rootfs，并恢复目标设备自己的四个校准分区后，Debian 与 Wi‑Fi 热点成功启动。
-
-## 1.2 GHz boot 的 modem 缺陷
-
-原始 `1.2.img` 启动后：
+第三方 Debian 11 的 `1.2.img` 可以启动系统和 Wi‑Fi，但内核报错：
 
 ```text
 qcom-q6v5-mss 4080000.remoteproc: unable to resolve mpss region
 ```
 
-`rmtfs.service` 因 `Failed to get rprocfd` 失败，ModemManager 看不到 modem。
+对比同包 `1.2.img` 与 `1.4.img` 后确认，1.2 GHz DTB 缺少 MPSS reserved-memory 和 memshare 节点。修复版只补入这两类节点，不加入 1.3/1.4 GHz OPP，因此 CPU 上限仍为 1.2 GHz。该版本形成了 `v1.0.x` 的可用基线。
 
-对比同包 `1.2.img` 与 `1.4.img` 的 DTB，差异只有：
+## Debian 12 阶段：MPSS firmware 不匹配
 
-1. `1.4.img` 多出 MPSS reserved-memory 节点。
-2. `1.4.img` 多出 memshare MPSS/GPS 子节点。
-3. `1.4.img` 多出 1.3 GHz 和 1.4 GHz CPU OPP。
-
-修复版在 `1.2.img` 中只补入前两项。kernel、ramdisk、ramdisk 偏移和 boot image 总大小保持不变，CPU OPP 仍以 1.2 GHz 为上限。
-
-修复后内核日志显示：
+Debian 12 原始 rootfs 只有 MBA 和 WCNSS 文件，缺少完整 `modem.mdt`、`modem.b*`。原归档另附的“替换基带”文件虽然能被 remoteproc 加载，但实机 modem revision 变为：
 
 ```text
-remoteproc remoteproc0: Booting fw image mba.mbn
-qcom-q6v5-mss 4080000.remoteproc: MBA booted without debug policy, loading mpss
-remoteproc remoteproc0: remote processor 4080000.remoteproc is now up
+UFI001CT 20211106
 ```
 
-随后 `rmtfs` 正常、ModemManager 发现 modem，插入 SIM 后成功注册 LTE 并建立数据连接。
+随后 radio 停留在离线状态，QMI online 操作返回 `DeviceNotReady`。这不是 SIM 校准分区丢失，因为本次升级只写了 boot/rootfs，四个设备专属校准分区没有被覆盖。
 
-## 基带与校准数据
+把已经在同一型号 Debian 11 上验证过的 22 个 MPSS 文件复制到 Debian 12 `/lib/firmware` 后，modem revision 恢复为：
 
-第三方 GPT 没有 Android 风格的 `modem` 分区。Linux 内核从 rootfs 的 `/lib/firmware/modem.*` 加载 MPSS firmware。因此：
+```text
+UFI103_CT 20220801
+```
 
-- 不应把原厂 `modem.bin` 按分区名刷回。
-- 必须保留目标设备自己的 `fsc/fsg/modemst1/modemst2`。
-- firmware 能启动但 `sim-missing` 时，应先确认 SIM 卡是否插入及接触，不要立即混刷基带。
+此后能识别 SIM、注册运营商、附着分组网络并连接。由此确认 Debian 12 的核心射频故障是 rootfs 中 MPSS 文件集不完整/不匹配，不需要刷入其他设备的基带或校准分区。
+
+## SIM 脚本为何会关闭全部槽位
+
+原脚本使用：
+
+```sh
+sim="$(get_sims | grep -e "^$1")"
+```
+
+当 `SIM_ENABLED=sim:sel` 时，前缀匹配同时返回 `sim:sel` 与 `sim:sel2`。变量中出现换行，后续生成无效 sysfs 路径，而 `disable_all_sim` 已先关闭所有槽位。
+
+修复方式是完整匹配并限制单行：
+
+```sh
+sim="$(get_sims | grep -F -x -- "$1" | head -n 1)"
+```
+
+修复后开机服务正常退出，对应 SIM GPIO 保持启用。
 
 ## 最终实测
 
-- Debian 11 正常启动
-- rootfs 约 3.3 GB
-- Wi‑Fi AP 地址 `10.42.1.1/24`
-- MPSS 与 WCNSS remoteproc 均正常
-- LTE 连接获得 IPv4/IPv6
-- 默认路由指向 `wwan0`
-- `ping 1.1.1.1` 三次全部成功
-- DNS 解析正常
-- `net.ipv4.ip_forward=1`
-- 热点网段存在 MASQUERADE 规则
-- systemd 无失败单元
+- Debian 12 bookworm，kernel `6.4.0-rc4-jsbsbxjxh66-compile+`
+- rootfs 扩展到约 3.3 GB
+- MPSS 与 WCNSS remoteproc 均为 `running`
+- RMTFS、ModemManager、NetworkManager、ADB 服务正常
+- SIM ready，LTE 注册、附着和数据连接正常
+- `wwan0` 获得 IPv4/IPv6
+- 强制 IPv4/IPv6 走 `wwan0` 均无丢包
+- Wi‑Fi 热点 DHCP、DNS、IPv4 forwarding 与 MASQUERADE 正常
+- 冷启动后 firmware 和 SIM 脚本修复持续生效
 
+一次手动重复激活蜂窝连接时，旧版 QMI/ModemManager 会话卡在 `disconnecting`，重启 ModemManager 后端口没有立即重新发现；整机启动路径可恢复。因此日常不应在 NetworkManager 自动拨号过程中重复运行 `nmcli connection up modem`。
+
+## 不应采取的做法
+
+- 不要因为 `DeviceNotReady` 就覆盖 `fsc/fsg/modemst1/modemst2`。
+- 不要把 Android 原厂 `modem.bin` 按分区刷入本 Release 的 GPT；Linux MPSS 来自 `/lib/firmware/modem.*`。
+- 不要使用其他 UFI/OpenStick 板型的 SBL1、CDT、aboot 或 firmware 试错。
+- 不要用已个性化、含密码或设备标识的运行中 rootfs 回读制作公共镜像。
