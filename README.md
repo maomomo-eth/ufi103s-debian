@@ -16,6 +16,7 @@
 - `rmtfs`、ModemManager：正常
 - 中国电信 LTE 数据：实测注册、拨号、IPv4/IPv6 和联网正常；这不代表电信短信可用
 - 中国移动短信：实测通过普通 AT/PDU 路径接收、发送均正常
+- eSIM 小白卡漫游短信：Saily（`+1` 美国号码）漫游中国移动、A1（`+385` 克罗地亚号码）漫游中国联通，接收短信均正常
 - USB gadget：ADB + RNDIS，USB ID 为 `18d1:d001`
 
 详细测试与故障原因见 [Debian 12 实机记录](docs/DEBIAN12.md)、[故障复盘](docs/POSTMORTEM.md)和[短信、基带与 ModemManager 排障记录](docs/SMS_TROUBLESHOOTING.md)。
