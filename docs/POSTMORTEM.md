@@ -67,6 +67,9 @@ sim="$(get_sims | grep -F -x -- "$1" | head -n 1)"
 - 强制 IPv4/IPv6 走 `wwan0` 均无丢包
 - Wi‑Fi 热点 DHCP、DNS、IPv4 forwarding 与 MASQUERADE 正常
 - 冷启动后 firmware 和 SIM 脚本修复持续生效
+- 中国移动 SIM 通过普通 AT/PDU 路径接收、发送短信均正常
+
+中国电信的上述实测结论只覆盖 LTE 注册和数据连接。后续短信测试中，电信卡无法建立可用的 CS 短信路径；giffgaff 虽能漫游注册，但同一张卡放入手机也收不到测试短信。完整证据、运营商对照和隐私安全的恢复流程见[短信、基带与 ModemManager 排障记录](SMS_TROUBLESHOOTING.md)。
 
 一次手动重复激活蜂窝连接时，旧版 QMI/ModemManager 会话卡在 `disconnecting`，重启 ModemManager 后端口没有立即重新发现；整机启动路径可恢复。因此日常不应在 NetworkManager 自动拨号过程中重复运行 `nmcli connection up modem`。
 
@@ -76,3 +79,6 @@ sim="$(get_sims | grep -F -x -- "$1" | head -n 1)"
 - 不要把 Android 原厂 `modem.bin` 按分区刷入本 Release 的 GPT；Linux MPSS 来自 `/lib/firmware/modem.*`。
 - 不要使用其他 UFI/OpenStick 板型的 SBL1、CDT、aboot 或 firmware 试错。
 - 不要用已个性化、含密码或设备标识的运行中 rootfs 回读制作公共镜像。
+- 不要把 LTE 数据注册成功等同于短信可用；先用同一张 SIM 在手机中做对照。
+- 不要让 VoCat 与 ModemManager 同时读写同一组 AT/QMI 端口。
+- 不要按固定 `remoteprocN` 或 `mmcblk0pN` 编号写固件/NV，应按 remoteproc 名称和分区标签重新确认。

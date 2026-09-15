@@ -14,10 +14,11 @@
 - Wi‑Fi 热点：`4G-WIFI`，DHCP、DNS 与 NAT 正常
 - Qualcomm MPSS、WCNSS：均正常运行
 - `rmtfs`、ModemManager：正常
-- 中国电信 LTE：实测注册、拨号、IPv4/IPv6 和联网正常
+- 中国电信 LTE 数据：实测注册、拨号、IPv4/IPv6 和联网正常；这不代表电信短信可用
+- 中国移动短信：实测通过普通 AT/PDU 路径接收、发送均正常
 - USB gadget：ADB + RNDIS，USB ID 为 `18d1:d001`
 
-详细测试与故障原因见 [Debian 12 实机记录](docs/DEBIAN12.md)和[故障复盘](docs/POSTMORTEM.md)。
+详细测试与故障原因见 [Debian 12 实机记录](docs/DEBIAN12.md)、[故障复盘](docs/POSTMORTEM.md)和[短信、基带与 ModemManager 排障记录](docs/SMS_TROUBLESHOOTING.md)。
 
 ## Release
 
@@ -105,6 +106,8 @@ Debian 12 原包的 rootfs 只有 MBA/WCNSS firmware，缺少 `modem.mdt` 和对
 原 `/usr/sbin/openstick-sim-changer.sh` 使用前缀匹配，`sim:sel` 会同时命中 `sim:sel2`，最后关闭所有 SIM 槽。修正版改为完整字符串匹配，开机可稳定选择配置的 SIM GPIO。
 
 这两处修复都位于 rootfs；没有写入或发布任何设备专属基带校准分区。
+
+后续短信对照还确认：同一设备使用中国移动 SIM 时，VoCat 的普通 AT/PDU 收发链路正常；中国电信 LTE 数据可用不能外推为短信可用；giffgaff 在设备和手机上均未收到测试短信。运营商结论、`AT+CGSMS`、ModemManager 端口所有权及原机 firmware/NV 恢复边界见[短信排障记录](docs/SMS_TROUBLESHOOTING.md)。
 
 ## 安全边界
 

@@ -18,7 +18,7 @@
 - Debian 12 与默认 `4G-WIFI` 热点正常启动
 - rootfs 扩展至约 3.3 GB
 - MPSS、WCNSS、RMTFS、ModemManager 正常
-- 中国电信 SIM 注册成功，IPv4/IPv6 与互联网访问正常
+- 中国电信 SIM 的 LTE 数据注册成功，IPv4/IPv6 与互联网访问正常；本项不包含短信能力
 - 热点 DHCP、DNS、IPv4 forwarding 和 MASQUERADE 正常
 - 冷启动后 firmware 与 SIM 修复持续生效
 
