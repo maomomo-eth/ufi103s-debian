@@ -69,7 +69,7 @@ sim="$(get_sims | grep -F -x -- "$1" | head -n 1)"
 - 冷启动后 firmware 和 SIM 脚本修复持续生效
 - 中国移动 SIM 通过普通 AT/PDU 路径接收、发送短信均正常
 
-中国电信的上述实测结论只覆盖 LTE 注册和数据连接。后续短信测试中，电信卡无法建立可用的 CS 短信路径；giffgaff 虽能漫游注册，但同一张卡放入手机也收不到测试短信。完整证据、运营商对照和隐私安全的恢复流程见[短信、基带与 ModemManager 排障记录](SMS_TROUBLESHOOTING.md)。
+中国电信的上述实测结论只覆盖 LTE 注册和数据连接。后续短信测试中，电信卡无法建立可用的 CS 短信路径。完整证据、运营商对照和隐私安全的恢复流程见[短信、基带与 ModemManager 排障记录](SMS_TROUBLESHOOTING.md)。
 
 一次手动重复激活蜂窝连接时，旧版 QMI/ModemManager 会话卡在 `disconnecting`，重启 ModemManager 后端口没有立即重新发现；整机启动路径可恢复。因此日常不应在 NetworkManager 自动拨号过程中重复运行 `nmcli connection up modem`。
 

@@ -107,7 +107,7 @@ Debian 12 原包的 rootfs 只有 MBA/WCNSS firmware，缺少 `modem.mdt` 和对
 
 这两处修复都位于 rootfs；没有写入或发布任何设备专属基带校准分区。
 
-后续短信对照还确认：同一设备使用中国移动 SIM 时，VoCat 的普通 AT/PDU 收发链路正常；中国电信 LTE 数据可用不能外推为短信可用；giffgaff 在设备和手机上均未收到测试短信。运营商结论、`AT+CGSMS`、ModemManager 端口所有权及原机 firmware/NV 恢复边界见[短信排障记录](docs/SMS_TROUBLESHOOTING.md)。
+后续短信对照还确认：同一设备使用中国移动 SIM 时，VoCat 的普通 AT/PDU 收发链路正常；中国电信 LTE 数据可用不能外推为短信可用。运营商结论、`AT+CGSMS`、ModemManager 端口所有权及原机 firmware/NV 恢复边界见[短信排障记录](docs/SMS_TROUBLESHOOTING.md)。
 
 ## 安全边界
 
