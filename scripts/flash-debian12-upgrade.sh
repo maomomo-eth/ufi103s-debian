@@ -9,7 +9,7 @@ usage() {
 用法：
   ./scripts/flash-debian12-upgrade.sh [--yes]
 
-仅适用于已经正常运行本仓库 v1.0.x、GPT 与 lk2nd 未改动的 UFI103S_V03。
+仅适用于已经正常运行兼容版 Debian 11、GPT 与 lk2nd 未改动的 UFI103S_V03。
 脚本只写入 rootfs 和 boot，不触碰 GPT、启动链或校准分区。
 
 环境变量：
@@ -80,7 +80,7 @@ echo "目标设备：${device_lines[0]}"
 cat <<'EOF'
 
 警告：下一步会清除现有 boot 和 rootfs。
-仅适用于 PCB 丝印 UFI103S_V03、已经运行本仓库 v1.0.x 的设备。
+仅适用于 PCB 丝印 UFI103S_V03、已经运行兼容版 Debian 11 的设备。
 必须已经保存完整 eMMC 和本机校准分区备份。
 EOF
 

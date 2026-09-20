@@ -30,7 +30,7 @@ Debian 12 原始 rootfs 缺少完整 `modem.*`；原包附带的替换 firmware 
 
 ## 刷写选择
 
-已有本仓库 `v1.0.x` 且 GPT/lk2nd 正常时，使用：
+已有与本包分区布局兼容的 Debian 11，且 GPT/lk2nd 正常时，使用：
 
 ```bash
 ./scripts/flash-debian12-upgrade.sh

@@ -36,7 +36,7 @@
 
 ## 两种刷法
 
-已有本仓库 `v1.0.x` Debian 11，且 GPT、lk2nd 和启动链工作正常时，优先只更新 boot 与 rootfs：
+已有与本包分区布局兼容的 Debian 11，且 GPT、lk2nd 和启动链工作正常时，优先只更新 boot 与 rootfs：
 
 ```bash
 sha256sum -c SHA256SUMS
@@ -113,7 +113,7 @@ Debian 12 原包的 rootfs 只有 MBA/WCNSS firmware，缺少 `modem.mdt` 和对
 ## 安全边界
 
 - 仅针对 PCB 丝印明确为 `UFI103S_V03` 的设备。
-- 全量脚本会重写 GPT；升级脚本只适用于已正常运行本仓库 `v1.0.x` 的布局。
+- 全量脚本会重写 GPT；升级脚本只适用于 GPT、lk2nd 与分区布局兼容的 Debian 11 系统。
 - 写入前必须做完整备份，并把备份保存在仓库目录之外。
 - 不要把 Android 原厂 `modem.bin` 写到本 Release 的 GPT；Linux 从 `/lib/firmware/modem.*` 加载 MPSS。
 - 9008 通常可恢复，但错误的 SBL1、CDT、GPT 或 Firehose 操作仍可能使设备无法启动。

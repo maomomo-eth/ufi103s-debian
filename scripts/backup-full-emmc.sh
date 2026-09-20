@@ -139,7 +139,7 @@ if ((available_bytes < required_bytes)); then
 fi
 
 cat >"$target_dir/BACKUP_INFO.txt" <<EOF
-backup_format=ufi103s-edl-full-emmc-v1
+backup_format=ufi103s-edl-full-emmc
 created_utc=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 disk_bytes=$disk_bytes
 disk_hex=$disk_hex
@@ -199,4 +199,3 @@ SHA-256 清单：$target_dir/SHA256SUMS
 BACKUP_INFO.txt 和 EDL 日志可能包含硬件标识；整个目录必须私密保存。
 建议再复制一份到另一块存储介质，并重新执行 sha256sum -c SHA256SUMS。
 EOF
-

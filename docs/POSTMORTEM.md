@@ -18,7 +18,7 @@
 qcom-q6v5-mss 4080000.remoteproc: unable to resolve mpss region
 ```
 
-对比同包 `1.2.img` 与 `1.4.img` 后确认，1.2 GHz DTB 缺少 MPSS reserved-memory 和 memshare 节点。修复版只补入这两类节点，不加入 1.3/1.4 GHz OPP，因此 CPU 上限仍为 1.2 GHz。该版本形成了 `v1.0.x` 的可用基线。
+对比同包 `1.2.img` 与 `1.4.img` 后确认，1.2 GHz DTB 缺少 MPSS reserved-memory 和 memshare 节点。修复版只补入这两类节点，不加入 1.3/1.4 GHz OPP，因此 CPU 上限仍为 1.2 GHz。该版本形成了后续升级使用的 Debian 11 可用基线。
 
 ## Debian 12 阶段：MPSS firmware 不匹配
 

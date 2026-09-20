@@ -75,12 +75,12 @@ USB PID 会在 EDL、fastboot 和 Debian 之间变化，每次重新枚举后都
 
 ## 6. 选择刷写方式
 
-### A. 从本仓库 Debian 11 v1.0.x 升级
+### A. 从兼容分区布局的 Debian 11 升级
 
 仅当以下条件全部满足时使用升级脚本：
 
 - 当前 GPT 和 lk2nd/fastboot 能正常工作；
-- 当前系统来自本仓库 `v1.0.x`，分区布局未改；
+- 当前 Debian 11 使用与本包兼容的 GPT、lk2nd 和分区布局；
 - `fastboot getvar product` 为 `LK1ST_MSM8916`；
 - 已另行保存完整 eMMC 与校准分区备份。
 
