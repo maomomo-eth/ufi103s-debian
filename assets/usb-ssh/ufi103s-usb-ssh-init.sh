@@ -32,4 +32,6 @@ if ! nmcli -w 15 connection up uuid c114f48e-be80-4e4f-b942-666e354233f0 ifname 
     echo 'USB DHCP 暂不可用，宿主机接入后由 NetworkManager 自动连接。' >&2
 fi
 
+# ssh.service 自己启动时才会创建 RuntimeDirectory；本服务的提前校验也需要它。
+install -d -m 0755 /run/sshd
 sshd -t

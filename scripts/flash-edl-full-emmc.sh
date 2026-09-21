@@ -13,17 +13,17 @@ usage() {
 用法：
   ./scripts/flash-edl-full-emmc.sh \
     --backup-dir /绝对路径/本机原厂全盘备份 \
-    --release-dir /绝对路径/ufi103s-debian-v2.0.0 \
+    --release-dir /绝对路径/ufi103s-debian-v2.1.0-base \
     --output-dir /仓库外的全新私有目录 [--yes] [--reset] \
-    [--rootfs-override /绝对路径/本地改版.img --rootfs-sha256 64位摘要]
+    --rootfs-override /绝对路径/实测rootfs.img --rootfs-sha256 64位摘要
 
 选项：
   --prepare-only    只组装并验证整盘镜像，不连接设备、不写入 eMMC
   --loader FILE     指定与目标设备匹配的 Firehose loader
   --yes             跳过写盘前的交互确认
   --reset           完成整盘回读后发送 EDL reset；默认停在 9008
-  --rootfs-override 指定本地改版 rootfs；不修改/覆盖 Release 原版
-  --rootfs-sha256   必须同时提供改版 rootfs 的 SHA-256
+  --rootfs-override 指定 Release 中单独下载的 rootfs；不修改基础包
+  --rootfs-sha256   必须同时提供 rootfs 的 SHA-256
 
 环境变量：EDL=/绝对路径/edl
 
@@ -74,11 +74,9 @@ if ((prepare_only && reset_after)); then
     echo "--prepare-only 不能与 --reset 同时使用。" >&2
     exit 2
 fi
-if [[ -n "$rootfs_override" || -n "$rootfs_sha256" ]]; then
-    if [[ -z "$rootfs_override" || ! "$rootfs_sha256" =~ ^[0-9a-fA-F]{64}$ ]]; then
-        echo '指定改版 rootfs 时必须同时提供有效的 64 位 SHA-256。' >&2
-        exit 2
-    fi
+if [[ -z "$rootfs_override" || ! "$rootfs_sha256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+    echo '必须指定 rootfs 路径及有效的 64 位 SHA-256。' >&2
+    exit 2
 fi
 for program in uv sha256sum cmp lsusb rg; do
     command -v "$program" >/dev/null 2>&1 || { echo "缺少工具：$program" >&2; exit 1; }
@@ -88,12 +86,10 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(cd -- "$script_dir/.." && pwd)"
 backup_dir="$(realpath -e -- "$backup_dir")"
 release_dir="$(realpath -e -- "$release_dir")"
-if [[ -n "$rootfs_override" ]]; then
-    rootfs_override="$(realpath -e -- "$rootfs_override")"
-    [[ -f "$rootfs_override" && -s "$rootfs_override" ]] || {
-        echo "改版 rootfs 文件无效：$rootfs_override" >&2; exit 1;
-    }
-fi
+rootfs_override="$(realpath -e -- "$rootfs_override")"
+[[ -f "$rootfs_override" && -s "$rootfs_override" ]] || {
+    echo "rootfs 文件无效：$rootfs_override" >&2; exit 1;
+}
 output_parent="$(realpath -e -- "$(dirname -- "$output_dir")")"
 output_dir="$output_parent/$(basename -- "$output_dir")"
 repo_root="$(git -C "$repo_dir" rev-parse --show-toplevel 2>/dev/null || true)"
@@ -116,17 +112,14 @@ fi
 echo "校验原厂全盘备份及 Release SHA-256……"
 (cd -- "$backup_dir" && sha256sum -c SHA256SUMS >/dev/null)
 (cd -- "$release_dir" && sha256sum -c SHA256SUMS >/dev/null)
-rootfs_image="$release_dir/images/rootfs-debian12-ufi103s-fixed.img"
-if [[ -n "$rootfs_override" ]]; then
-    actual_rootfs_sha256="$(sha256sum -- "$rootfs_override")"
-    actual_rootfs_sha256="${actual_rootfs_sha256%% *}"
-    if [[ "${actual_rootfs_sha256,,}" != "${rootfs_sha256,,}" ]]; then
-        echo '本地改版 rootfs SHA-256 不匹配，拒绝刷写。' >&2
-        exit 1
-    fi
-    rootfs_image="$rootfs_override"
-    echo "已验证并选择本地改版 rootfs：$rootfs_image"
+actual_rootfs_sha256="$(sha256sum -- "$rootfs_override")"
+actual_rootfs_sha256="${actual_rootfs_sha256%% *}"
+if [[ "${actual_rootfs_sha256,,}" != "${rootfs_sha256,,}" ]]; then
+    echo 'rootfs SHA-256 不匹配，拒绝刷写。' >&2
+    exit 1
 fi
+rootfs_image="$rootfs_override"
+echo "已验证 rootfs：$rootfs_image"
 
 edl_bin="${EDL:-edl}"
 if ((prepare_only == 0)); then

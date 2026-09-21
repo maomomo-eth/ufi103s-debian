@@ -1,154 +1,47 @@
-# UFI103S V02/V03 Debian 12 刷机与修复
+# UFI103S V02/V03 Debian 12：9008 备份与刷机
 
-这是 UFI103S 系列（Qualcomm MSM8916、512 MB RAM、4 GB eMMC）4G 随身 Wi‑Fi 的 Debian 刷机、备份和排障仓库。V03 已验证系统启动、热点和蜂窝网络；V02 已验证原厂分区布局与 V03 一致，以及从 9008 全盘写入 v2.0.0 并逐字节回读一致。V02 的实际启动状态仍需另行核验。
+本仓库只推荐 **9008 全盘流程**。`UFI103S_V02`、`UFI103S_V03` 已实测刷入 Debian 12、USB 网卡、Wi‑Fi 热点、SSH、蜂窝射频与 VoCat 短信转发；VoCat 在两种板号上的结果来自设备使用者的实测反馈。本机还验证了 V02 使用最新 rootfs 重刷后的整盘逐字节回读、冷启动、USB DHCP 和密码 SSH，以及禁用 NetworkManager 后热点与 USB DHCP 自动恢复。
 
-`v2.0.0` 已在实机上验证 Debian 12、Wi‑Fi 热点、ADB、Qualcomm MPSS、RMTFS、ModemManager 与中国电信 LTE。修正版解决了 Debian 12 原包缺少适配 UFI103S 的 MPSS firmware，以及 SIM 切换脚本误选多个 GPIO 的问题。
+`UFIx0x` 其他数字组合**仅是兼容性推测，不是已验证设备清单**。本仓库组装和刷写脚本只接受已核对原厂 GPT 布局、容量恰为 `3909091328` 字节的 V02/V03；其他板即使能进入 9008，也必须先独立确认 SoC、Firehose、GPT/启动链、DTB、eMMC 容量与 MPSS 兼容。完整备份原机基带和校准数据是必要条件，**不是跨板通刷的充分条件**，绝不能把一台设备的 NV/校准分区写到另一台。
 
-## 已验证状态
+## 镜像与备份
 
-- 板号：`UFI103S_V03`；`UFI103S_V02` 已通过整盘刷写回读验证
-- SoC：Qualcomm MSM8916
-- 系统：Debian 12（bookworm）
-- 内核：`6.4.0-rc4-jsbsbxjxh66-compile+`
-- rootfs：首次启动后扩展至约 3.3 GB
-- Wi‑Fi 热点：`4G-WIFI`，DHCP、DNS 与 NAT 正常
-- Qualcomm MPSS、WCNSS：均正常运行
-- `rmtfs`、ModemManager：正常
-- 中国电信 LTE 数据：实测注册、拨号、IPv4/IPv6 和联网正常；这不代表电信短信可用
-- 中国移动短信：实测通过普通 AT/PDU 路径接收、发送均正常
-- eSIM 小白卡漫游短信：Saily（`+1` 美国号码）漫游中国移动，A1（`+385` 克罗地亚号码）和 HahaSim（`+852` 号码）漫游中国联通，接收短信均正常
-- USB gadget：ADB + RNDIS，USB ID 为 `18d1:d001`
+- 最新实测 rootfs：`rootfs-debian12-usb-wifi-ssh-local-network.img`（[v2.1.0 Release](../../releases/tag/v2.1.0)），SHA-256：`5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50`。
+- 同一 [v2.1.0 Release](../../releases/tag/v2.1.0) 中的 `ufi103s-debian-v2.1.0-base.tar.gz` 提供组装整盘所需的 GPT、启动链、`ufix0x` boot 及校验清单；使用**本仓库当前脚本**，并显式指定上述 rootfs。
+- `.img` 是 Android sparse 格式的 **rootfs 分区镜像，不是整盘镜像**；不能直接执行 `edl wf 此文件`。正式刷入的是脚本结合原机备份生成的 `debian-v2-full-emmc.bin`。
+- 原厂完整 eMMC、`modem.bin`/固件及 `fsc/fsg/modemst1/modemst2/persist` 等数据必须来自**正在刷的这一台设备**；备份和整盘输出放在仓库之外，不能上传 Release。
 
-详细测试与故障原因见 [Debian 12 实机记录](docs/DEBIAN12.md)、[故障复盘](docs/POSTMORTEM.md)和[短信、基带与 ModemManager 排障记录](docs/SMS_TROUBLESHOOTING.md)。
+## 从原厂系统刷入：七步
 
-## Release
+完整命令、安全检查与 KVM 说明见 [刷机指南](docs/FLASHING.md)。本节是操作顺序，不省略原机完整备份。
 
-已发布的可刷包见仓库的 [Releases](../../releases)。`v2.0.0` 包含：
+1. 按住 **SIM 卡旁的按键**插入 USB，或在原系统 ADB 可用时运行 `adb reboot edl`。USB 重新枚举后，以 `lsusb -d 05c6:9008` 确认进入 EDL；若 ADB 命令不生效，使用按键。KVM 需重新映射这个 USB ID。
+2. 在 9008 使用 `scripts/backup-full-emmc.sh` **完整备份原机 eMMC**、GPT 和关键分区；运行 `sha256sum -c SHA256SUMS` 复核，备份后不要让原厂系统再次启动或断开同机校验条件。
+3. 用 v2.1 配套基础包的 GPT/boot、实测 rootfs 及这台设备的原厂全盘备份组装整盘镜像。原机 `modem` 分区随原厂全盘备份保留，`fsc/fsg/modemst1/modemst2` 来自同一备份；Linux MPSS 固件由 rootfs 中的 `/lib/firmware` 提供。先使用刷机脚本 `--prepare-only` 离线验证；**不要把 Android 的 `modem.bin` 直接写到 rootfs 或其他分区**。
+4. 设备仍处于 9008 时，使用本仓库的 `scripts/flash-edl-full-emmc.sh` 写入**整块 eMMC**，然后从同机备份单独恢复四个校准/NV 分区；每项回读、整盘回读并逐字节比较后再重启。不进入 fastboot。刷写会清除原机系统和用户数据。
+5. 首次启动会生成本机专属 SSH 主机密钥，开启 RNDIS/ADB USB 网卡（设备 `192.168.68.1/24`）、SSH 与 Wi‑Fi 热点。默认热点 `4G-WIFI` / `12345678`；默认用户名 `user`、密码 `1`。USB 连接后用 `ssh user@192.168.68.1`，Wi‑Fi 连接后用 `ssh user@10.42.0.1`。仅允许从 USB/Wi‑Fi 接入 SSH，蜂窝接口不开放密码 SSH；首次使用应修改默认用户和热点密码。
+6. SSH 登录后运行 `sudo ufi103s-modem-test`，只读检查 MPSS、`rmtfs`、ModemManager、注册状态与 `wwan0`；不向 modem 发送 AT 命令，不写入基带或校准分区。
+7. 按需安排用途：可以自行把 Wi‑Fi 改为客户端上网，或运行 `sudo ufi103s-nm-disable` 关闭 NetworkManager 与蜂窝数据而**保留热点、USB DHCP 和 USB SSH**；`sudo ufi103s-nm-enable` 可恢复。安装 VoCat 仅做短信转发、需要独占 AT/QMI 端口时，另用下方脚本关闭 ModemManager。蜂窝数据关闭不等于 ModemManager 已关闭。
 
-- 与实机匹配的 GPT 和启动链
-- `ufix0x` Debian 12 boot image
-- 已补齐 UFI103S MPSS firmware、修复 SIM 选择脚本的 sparse rootfs
-- 9008/EDL 完整 eMMC 备份脚本；本仓库另提供全盘组装、刷写、同机校准恢复及回读校验脚本
-- SHA-256 校验文件
+## ModemManager 与 VoCat
 
-发布包**不包含设备专属校准分区、全盘备份、Wi‑Fi 私有配置、SIM 信息或设备身份信息**。
-已发布的 v2.0.0 压缩包仍带有旧 fastboot 文件；刷机必须以本仓库最新脚本和文档为准，不要运行压缩包里的旧刷机脚本。
-
-## 刷机流程：只使用 9008 全盘写入
-
-先在 `05c6:9008` 完整备份原机，保持设备处于 9008；从本仓库运行脚本，镜像文件使用解压后的 v2.0.0 发布包：
+**当前已实测的 v2.1.0 img 不内置下面新增的管理脚本**。如需在这份镜像上使用，从本仓库复制后再登录 SSH 安装（不需要重新刷机）：
 
 ```bash
-EDL=/绝对路径/edl ./scripts/backup-full-emmc.sh /仓库外/新建的原厂备份目录
-
-EDL=/绝对路径/edl ./scripts/flash-edl-full-emmc.sh \
-  --backup-dir /仓库外/新建的原厂备份目录 \
-  --release-dir /绝对路径/ufi103s-debian-v2.0.0 \
-  --output-dir /仓库外/新建的私有刷机目录
+scp assets/usb-ssh/ufi103s-modemmanager.sh user@192.168.68.1:/home/user/
+ssh user@192.168.68.1
+sudo install -m 0755 /home/user/ufi103s-modemmanager.sh /usr/local/sbin/ufi103s-modemmanager
+sudo ufi103s-modemmanager disable   # mask 并停止 ModemManager，交给 VoCat 独占
+ufi103s-modemmanager status
 ```
 
-第二条命令会验证备份和发布包、检查同机原厂数据，生成整盘镜像，直接通过 9008 写入整块 eMMC，再单独恢复本机 `fsc/fsg/modemst1/modemst2`，最后将整盘回读与目标镜像逐字节比较。默认不复位，验证成功后再物理断电上电，或按需加 `--reset`。旧 fastboot 写入脚本已停用。完整步骤与风险见[刷机指南](docs/FLASHING.md)。
+要恢复前先停 VoCat，再运行 `sudo ufi103s-modemmanager enable`。关闭 ModemManager **不关闭 Wi‑Fi 热点/USB 网络**；若还想停止旧的蜂窝数据连接，可单独运行 `ufi103s-nm-disable`。后续重新从本仓库构建的 rootfs 会内置这个脚本，但它与上述已实测 img 的 SHA-256 不同，不要混称同一镜像。短信测试边界见[短信与 VoCat 说明](docs/SMS_TROUBLESHOOTING.md)。
 
-## 刷机前备份
+## 安全与隐私
 
-至少备份每台设备自己的：
+- 密码 `1` 和热点密码 `12345678` 是公开的默认值；按要求**不在首启自动生成强密码**，部署到不可信环境前请手动修改。
+- 备份、回读镜像、日志可能含 IMEI/序列号、SIM、Wi‑Fi、SSH 信息。公开文档或 Release 只能使用从干净基础镜像生成并通过隐私检查的文件，不能使用运行中设备回读的 rootfs。
+- 原厂状态直接刷写的一键脚本会比对**原厂 GPT 和当时的 NV**；已刷过 Debian 的设备不是原厂状态，重刷不能跳过目标身份与分区检查后照搬首次刷机命令。
+- 遇到无线/短信异常，先确认设备端口所有权、运营商短信能力、rootfs 固件和原机校准备份；不要盲目刷入他机基带。
 
-```text
-fsc.bin
-fsg.bin
-modemst1.bin
-modemst2.bin
-```
-
-在 `05c6:9008` 下完成完整 eMMC 备份后才能刷写：
-
-```bash
-EDL=/绝对路径/edl \
-./scripts/backup-full-emmc.sh /绝对路径/新备份目录
-```
-
-完整说明见 [EDL 备份指南](docs/EDL_BACKUP.md)。这些文件可能包含设备身份和射频校准数据，不能互相混刷或提交 Git。
-
-## 默认访问信息
-
-发布镜像保留第三方基础镜像的初始配置：
-
-- Wi‑Fi SSID：`4G-WIFI`
-- Wi‑Fi 密码：`12345678`
-- Debian 用户：`user`
-- Debian 密码：`1`
-
-首次登录后必须修改密码，按需删除或锁定默认账号，并更改热点凭据：
-
-```bash
-adb shell
-passwd user
-```
-
-不要把修改后的 NetworkManager 连接文件或设备回读 rootfs 放入 GitHub Release。
-
-## USB / Wi-Fi 密码 SSH（待实机验证的本地镜像改版）
-
-当前 `v2.0.0` Release **不包含**下面的新功能；不要把本节当成已发布镜像的行为。仓库中的构建脚本现在会在改版 rootfs 中启用 RNDIS/ADB、USB 网络 `192.168.68.1/24` 和 SSH；首次启动仅生成设备专属 SSH 主机密钥，不生成或修改登录密码。允许普通用户从 `usb0` 与 `wlan0` 使用密码登录，拒绝 root SSH 登录，并封闭其他接口（包括蜂窝网络）的 TCP 22 端口。USB 地址使用 NetworkManager 的共享连接，宿主机接入后自动获取地址；Wi-Fi 请连接设备热点后从其网关地址登录。
-
-```bash
-ssh user@192.168.68.1                       # USB 网卡
-ssh user@热点网关地址                          # Wi-Fi
-sudo ufi103s-modem-test                       # 只读测试 modem/射频服务
-sudo ufi103s-nm-stop                          # 临时停止 NetworkManager
-sudo ufi103s-nm-disable                       # 持久禁用 NetworkManager
-sudo ufi103s-nm-enable                        # 解除禁用并立即启动
-```
-
-默认 `user/1` 与热点 `4G-WIFI/12345678` 都已公开；按你的要求不自动换密码，因此开启密码 SSH 后必须在可信环境中立即执行 `passwd user` 并更换热点密码。`ufi103s-nm-stop` 只停止到下一次重启；`ufi103s-nm-disable` 会持久屏蔽服务，防止再次被拉起；`ufi103s-nm-enable` 解除屏蔽、设为开机启动并立即启动。停止或禁用均可能断开 Wi-Fi 热点、USB DHCP、蜂窝联网以及当前 SSH 会话；**禁用前先确认 ADB/串口可用，恢复时通过 ADB/串口执行 `sudo ufi103s-nm-enable`**。禁用 NetworkManager 不等于释放 ModemManager 占用的 AT/QMI 端口，安装 VoCat 前仍需按[端口所有权说明](docs/SMS_TROUBLESHOOTING.md#vocat-与-modemmanager-的所有权)处理。测试脚本不发送 AT 命令、不改基带、不写校准分区。
-
-无需重新构建 MPSS，可以对原版 v2.0.0 sparse rootfs 的**副本**生成本地改版镜像：
-
-```bash
-./tools/enable-usb-wifi-ssh-rootfs.sh \
-  --source /绝对路径/ufi103s-debian-v2.0.0/images/rootfs-debian12-ufi103s-fixed.img \
-  --output /仓库外/新建目录/rootfs-usb-wifi-ssh.img
-```
-
-输出镜像尚未刷机验证；不要覆盖原版 Release、设备原厂备份或已有镜像，也不要在未经验证前宣称此版已通过实机测试。
-
-今后若按[9008 全盘流程](docs/FLASHING.md)刷入此改版，仍需先备份原机，使用原版 v2.0.0 `--release-dir`，并在刷机脚本原有参数后显式追加：
-
-```bash
---rootfs-override /仓库外/新建目录/rootfs-usb-wifi-ssh.img \
---rootfs-sha256 "$(sha256sum /仓库外/新建目录/rootfs-usb-wifi-ssh.img | cut -d ' ' -f 1)"
-```
-
-先用 `--prepare-only` 做不连接设备的整盘组装复核。这个参数只替换 rootfs 来源，不绕过 Release 完整性校验、原厂备份检查或同机校准恢复；不可混用别人的原厂分区。
-
-## USB 模式
-
-| USB ID | 模式 |
-| --- | --- |
-| `05c6:90b4` | 原 Android/诊断模式 |
-| `05c6:9008` | Qualcomm EDL/QDL |
-| `18d1:d001` | Debian ADB + RNDIS gadget |
-
-`usb.ids` 可能把 `18d1:d001` 显示为 “Nexus 4 (fastboot)”，不能据此判断设备真的处于 fastboot。KVM 用户见 [USB 映射说明](docs/KVM_USB.md)。
-
-## 关键修复
-
-Debian 12 原包的 rootfs 只有 MBA/WCNSS firmware，缺少 `modem.mdt` 和对应的 `modem.b*`，另附的“替换基带”文件在本机上会把 modem 留在离线状态。`v2.0.0` 改用已经在同一块 UFI103S 上验证过的 MPSS 文件集。
-
-原 `/usr/sbin/openstick-sim-changer.sh` 使用前缀匹配，`sim:sel` 会同时命中 `sim:sel2`，最后关闭所有 SIM 槽。修正版改为完整字符串匹配，开机可稳定选择配置的 SIM GPIO。
-
-这两处修复都位于 rootfs；没有写入或发布任何设备专属基带校准分区。
-
-后续短信对照还确认：同一设备使用中国移动 SIM 时，VoCat 的普通 AT/PDU 收发链路正常；中国电信 LTE 数据可用不能外推为短信可用。运营商结论、`AT+CGSMS`、ModemManager 端口所有权及原机 firmware/NV 恢复边界见[短信排障记录](docs/SMS_TROUBLESHOOTING.md)。
-
-## 安全边界
-
-- 仅针对 PCB 丝印明确为 `UFI103S_V02` 或 `UFI103S_V03`、原厂 GPT 与脚本预期布局一致、eMMC 容量为 `3909091328` 字节的设备。V02 刷写后是否正常启动仍需核验。
-- 全量脚本会重写整块 eMMC；不通过 fastboot 刷写，不提供原有分区不变的升级模式。
-- 写入前必须做完整备份，并把备份保存在仓库目录之外。
-- 不要把 Android 原厂 `modem.bin` 写到本 Release 的 GPT；Linux 从 `/lib/firmware/modem.*` 加载 MPSS。
-- 9008 通常可恢复，但错误的 SBL1、CDT、GPT 或 Firehose 操作仍可能使设备无法启动。
-
-## 来源说明
-
-原创脚本和文档采用 MIT License。第三方 rootfs、kernel、firmware 和 bootloader 的来源摘要见 [第三方组件说明](THIRD_PARTY.md)。
+构建与故障原因保留在 [Debian 12 历史记录](docs/DEBIAN12.md)和[问题复盘](docs/POSTMORTEM.md)；这些记录不是当前刷机步骤。虚拟机 USB 映射见 [KVM 说明](docs/KVM_USB.md)。

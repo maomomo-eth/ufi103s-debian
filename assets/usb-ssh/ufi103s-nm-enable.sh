@@ -10,6 +10,7 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+systemctl disable --now ufi103s-local-network.service
 systemctl unmask NetworkManager.service
 systemctl enable --now NetworkManager.service
-echo 'NetworkManager 已恢复开机启动并已启动。'
+echo '独立热点/DHCP 已退出；NetworkManager 已恢复开机启动并已启动。'

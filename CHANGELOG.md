@@ -1,21 +1,12 @@
 # 更新记录
 
-## 未发布
+## v2.1.0 - 2026-09-22
 
-- 将推荐刷机流程统一为 9008 原厂全盘备份 → 直接写整块 eMMC → 同机校准分区单独恢复 → 整盘回读校验；停用历史 fastboot 写入入口。
-- 新增 UFI103S V02/V03 定容 GPT 组装与 CRC 检查、原厂分区布局/同机备份核对及私有输出目录保护。V02 实测刷写回读一致；实际启动与网络结果仍需验证。
-- 增加 Saily（`+1` 美国号码）漫游中国移动，A1（`+385` 克罗地亚号码）和 HahaSim（`+852` 号码）漫游中国联通的 eSIM 小白卡接收短信实测。
-- 增加 UFI103S V03 短信、基带与 ModemManager 实机排障记录。
-- 明确中国电信 LTE 数据可用不代表短信可用，并记录中国移动 AT/PDU 短信收发成功的对照结果。
-- 补充 `modem.bin` 提取、同机 NV 恢复、remoteproc/分区动态识别、回读校验和隐私边界。
-- 明确本次刷写前蜂窝 MPSS 与有效 NV 已匹配原机备份，不能把更换 SIM 后的成功错误归因于重复刷写。
+- 发布实测 sparse rootfs（SHA-256 `5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50`）及 GPT／启动链／boot 配套包；两个文件都可从同一 Release 获取，不含实机私有备份。
+- V02 9008 整盘写入、同机四个校准分区恢复、整盘逐字节回读成功；冷启动后 USB RNDIS/DHCP、热点、密码 SSH 与蜂窝联网正常。首次启动生成独立 SSH 主机密钥。
+- 使用者反馈 V02/V03 安装 VoCat 后短信转发正常；其他 UFIx0x 板型尚未验证。
+- 将文档收敛为 9008 完整备份 → 同机备份与配套文件组装整盘 → 写盘并恢复四个校准分区 → 回读 → 首启及 VoCat；删除不适用的 fastboot 刷机入口与重复脚本。
+- 更新 `ufi103s-nm-disable`／`ufi103s-nm-enable`：关闭蜂窝数据时保留 Wi‑Fi 热点、USB DHCP/SSH。新增独立 ModemManager 开关脚本供 VoCat 使用；**本次实测 img 不含新脚本**，可按 README 手动安装。
+- 测试记录：Saily `+1` 漫游中国移动、A1 `+385` 与 HahaSim `+852` 漫游中国联通，均可接收短信。
 
-## v2.0.0 - 2026-09-15
-
-- 升级为经过实机验证的 Debian 12（bookworm）rootfs 和 `ufix0x` boot。
-- 从已验证的 UFI103S Debian 11 镜像补齐 22 个 MPSS firmware 文件。
-- 修复 SIM 切换脚本对 `sim:sel` 和 `sim:sel2` 的错误前缀匹配。
-- 增加 Debian 11 → Debian 12 的 boot/rootfs 安全升级脚本，不触碰校准分区。
-- 更新全量刷写脚本、设备检查脚本、刷机指南和射频初始化复盘。
-- 实测 LTE 注册、IPv4/IPv6、指定 WWAN 出口、Wi‑Fi 热点 DHCP/DNS/NAT 和冷启动持久化。
-- 发布包使用干净基础镜像构建，不包含设备回读数据和私有网络配置。
+早期排障背景见 [技术复盘](docs/POSTMORTEM.md)。

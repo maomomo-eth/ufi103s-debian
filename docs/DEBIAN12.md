@@ -1,5 +1,7 @@
 # Debian 12 构建与实机验证记录
 
+> 历史构建记录：描述早期 boot/rootfs 升级试验，**不是当前刷机步骤**。刷机请从 [README](../README.md) 和 [9008 指南](FLASHING.md) 开始。
+
 ## 输入文件
 
 Debian 12 原始归档：

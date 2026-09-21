@@ -134,7 +134,8 @@ if [[ ! -s "$sparse_tool" ]]; then
 fi
 for name in usb.nmconnection 20-ufi103s-usb.conf ufi103s-usb-ssh-init.service \
     10-ufi103s-init.conf ufi103s-usb-ssh-init.sh ufi103s-modem-test.sh \
-    ufi103s-nm-stop.sh ufi103s-nm-disable.sh ufi103s-nm-enable.sh; do
+    ufi103s-nm-disable.sh ufi103s-nm-enable.sh ufi103s-modemmanager.sh \
+    ufi103s-local-network.sh ufi103s-local-network.service; do
     if [[ ! -s "$usb_ssh_assets/$name" ]]; then
         echo "缺少 USB/SSH 初始化资产：$usb_ssh_assets/$name" >&2
         exit 1
@@ -192,12 +193,16 @@ echo "启用 USB 网络与首启 SSH 主机密钥生成……"
     "$mount_dir/usr/local/sbin/ufi103s-usb-ssh-init"
 "${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-modem-test.sh" \
     "$mount_dir/usr/local/sbin/ufi103s-modem-test"
-"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-nm-stop.sh" \
-    "$mount_dir/usr/local/sbin/ufi103s-nm-stop"
 "${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-nm-disable.sh" \
     "$mount_dir/usr/local/sbin/ufi103s-nm-disable"
 "${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-nm-enable.sh" \
     "$mount_dir/usr/local/sbin/ufi103s-nm-enable"
+"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-modemmanager.sh" \
+    "$mount_dir/usr/local/sbin/ufi103s-modemmanager"
+"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-local-network.sh" \
+    "$mount_dir/usr/local/sbin/ufi103s-local-network"
+"${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/ufi103s-local-network.service" \
+    "$mount_dir/etc/systemd/system/ufi103s-local-network.service"
 "${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/ufi103s-usb-ssh-init.service" \
     "$mount_dir/etc/systemd/system/ufi103s-usb-ssh-init.service"
 "${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/10-ufi103s-init.conf" \
@@ -214,6 +219,9 @@ fi
     "$mount_dir/etc/systemd/system/multi-user.target.wants/ufi103s-usb-ssh-init.service"
 "${privilege[@]}" ln -s -- /lib/systemd/system/ssh.service \
     "$mount_dir/etc/systemd/system/multi-user.target.wants/ssh.service"
+# 原镜像启用了 ssh.socket（双栈监听）；不能让它绕过仅 IPv4 的接口限制。
+"${privilege[@]}" rm -f -- "$mount_dir/etc/systemd/system/sockets.target.wants/ssh.socket"
+"${privilege[@]}" ln -s -- /dev/null "$mount_dir/etc/systemd/system/ssh.socket"
 for obsolete in mobian-setup-usb-network.service mobian-ssh-keygen.service mobian-usb-gadget.service; do
     old_link="$mount_dir/etc/systemd/system/multi-user.target.wants/$obsolete"
     if [[ -L "$old_link" && ! -e "$old_link" ]]; then

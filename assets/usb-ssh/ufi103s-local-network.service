@@ -1,0 +1,14 @@
+[Unit]
+Description=NetworkManager 关闭时保持 UFI103S Wi-Fi 热点和 USB DHCP
+After=linux-adbd-utils.service wpa_supplicant.service
+Wants=linux-adbd-utils.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ufi103s-local-network start
+ExecStop=/usr/local/sbin/ufi103s-local-network stop
+RemainAfterExit=yes
+TimeoutStartSec=45
+
+[Install]
+WantedBy=multi-user.target

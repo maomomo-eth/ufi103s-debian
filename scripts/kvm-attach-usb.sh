@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 if (($# != 2)); then
-    echo "用法：sudo $0 <虚拟机名> <android|edl|fastboot|debian>" >&2
+    echo "用法：sudo $0 <虚拟机名> <android|edl|debian>" >&2
     exit 2
 fi
 
@@ -13,7 +13,6 @@ virsh_bin="${VIRSH:-virsh}"
 case "$mode" in
     android)  vendor="05c6"; product="90b4" ;;
     edl)      vendor="05c6"; product="9008" ;;
-    fastboot) vendor="18d1"; product="d00d" ;;
     debian)   vendor="18d1"; product="d001" ;;
     *)
         echo "未知模式：$mode" >&2
@@ -38,4 +37,3 @@ EOF
 
 "$virsh_bin" attach-device "$vm_name" "$xml_file" --live
 echo "已把 $vendor:$product（$mode）映射到 $vm_name。"
-

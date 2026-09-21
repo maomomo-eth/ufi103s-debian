@@ -1,6 +1,6 @@
 # virt-manager/KVM USB 映射
 
-原 Android 进入 9008、刷机完成并启动 Debian 时，USB 会切换 PID，因此单次图形界面映射通常不会持续。刷机过程始终留在 9008，不需要映射 fastboot。
+原 Android 进入 9008、刷机完成并启动 Debian 时，USB 会切换 PID，因此单次图形界面映射通常不会持续。刷机过程始终留在 9008，不需要映射 fastboot。Debian 的 `18d1:d001` 虽可能被 `lsusb` 误显示为 fastboot，实机上是 ADB + RNDIS。
 
 ## 虚拟机内 udev 权限
 
@@ -33,6 +33,6 @@ sudo ./scripts/kvm-attach-usb.sh <虚拟机名> edl
 sudo ./scripts/kvm-attach-usb.sh <虚拟机名> debian
 ```
 
-每次 PID 改变后执行对应模式。脚本使用 `virsh attach-device --live`，只影响正在运行的虚拟机，不永久修改虚拟机定义。
+该脚本须在**宿主机可访问本仓库脚本**的路径执行（例如仓库也克隆到了宿主机）；若仓库仅位于虚拟机，就在 virt-manager 的 USB 设备界面映射。每次 PID 改变后执行对应模式。脚本使用 `virsh attach-device --live`，只影响正在运行的虚拟机，不永久修改虚拟机定义。
 
 如果宿主机 `lsusb` 根本看不到设备，libvirt 无法映射；应先检查物理供电、USB 口、线材和设备是否停留在无 USB 输出的启动阶段。

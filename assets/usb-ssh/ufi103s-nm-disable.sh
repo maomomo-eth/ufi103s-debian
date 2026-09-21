@@ -10,8 +10,15 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-echo '将持久禁用 NetworkManager：Wi-Fi 热点、USB DHCP、蜂窝联网及当前 SSH 可能立即断开。请先确认 ADB 或串口可用于恢复。' >&2
+echo '将持久禁用 NetworkManager 和蜂窝联网；Wi-Fi 热点与 USB DHCP 切换至独立服务，连接可能短暂中断。' >&2
 # 先 mask 再 stop，避免通过 SSH 执行时断线造成“已停但未持久禁用”。
 systemctl mask NetworkManager.service
 systemctl stop NetworkManager.service
-echo 'NetworkManager 已持久禁用；通过 ADB/串口执行 ufi103s-nm-enable 可恢复。'
+if ! systemctl enable --now ufi103s-local-network.service; then
+    echo '独立热点/DHCP 启动失败，正在恢复 NetworkManager。' >&2
+    systemctl disable --now ufi103s-local-network.service || true
+    systemctl unmask NetworkManager.service
+    systemctl enable --now NetworkManager.service
+    exit 1
+fi
+echo 'NetworkManager 和蜂窝联网已停用；Wi-Fi 热点、USB DHCP 继续运行。'

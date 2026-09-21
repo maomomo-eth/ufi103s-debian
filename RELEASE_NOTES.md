@@ -1,47 +1,20 @@
-# v2.0.0：UFI103S V03 Debian 12 实机验证版
+# v2.1.0：UFI103S V02 实测 Debian 12 USB／热点／SSH rootfs
 
-这是面向 PCB 丝印 `UFI103S_V03`、MSM8916、512 MB RAM、4 GB eMMC 设备的私有恢复包。
+本次发布的唯一镜像是 `rootfs-debian12-usb-wifi-ssh-local-network.img`（Android sparse 格式，861512128 字节），SHA-256：
 
-## 本版内容
-
-- Debian 12（bookworm）sparse rootfs
-- `6.4.0-rc4-jsbsbxjxh66-compile+` 内核与 `ufix0x` DTB boot image
-- 已验证的 UFI103S MPSS firmware 文件集
-- 修复后的 `openstick-sim-changer.sh`
-- UFI103S 对应 GPT、CDT 与启动链
-- 镜像包中历史 fastboot 脚本（已被仓库当前流程取代，不再推荐执行）
-- 9008/EDL 完整 eMMC 备份脚本；本仓库另提供新的 9008 整盘刷机脚本
-- 完整 SHA-256 清单
-
-## 实机结果
-
-- Debian 12 与默认 `4G-WIFI` 热点正常启动
-- rootfs 扩展至约 3.3 GB
-- MPSS、WCNSS、RMTFS、ModemManager 正常
-- 中国电信 SIM 的 LTE 数据注册成功，IPv4/IPv6 与互联网访问正常；本项不包含短信能力
-- 热点 DHCP、DNS、IPv4 forwarding 和 MASQUERADE 正常
-- 冷启动后 firmware 与 SIM 修复持续生效
-
-## v2.0.0 关键修复
-
-Debian 12 原始 rootfs 缺少完整 `modem.*`；原包附带的替换 firmware 与本机不匹配，modem 会停留在离线状态。本版改用已在同一型号实机验证的 UFI103S MPSS 文件集。
-
-原 SIM 脚本用前缀匹配查找 sysfs LED，`sim:sel` 会同时命中 `sim:sel2`，形成无效路径并关闭全部 SIM 槽。本版改用完整字符串匹配。
-
-## 当前刷写方式
-
-发布镜像仍使用 v2.0.0；从**最新仓库**运行新的 9008 整盘刷机脚本，不能运行旧发布包内的 fastboot 刷写脚本：
-
-```bash
-EDL=/绝对路径/edl ./scripts/backup-full-emmc.sh /仓库外/新建原厂备份目录
-EDL=/绝对路径/edl ./scripts/flash-edl-full-emmc.sh \
-  --backup-dir /仓库外/新建原厂备份目录 \
-  --release-dir /绝对路径/ufi103s-debian-v2.0.0 \
-  --output-dir /仓库外/新建私有刷机目录
+```text
+5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50  rootfs-debian12-usb-wifi-ssh-local-network.img
+530cdbb4fcb83fd48c273ca883dc37187896e0eb8a00b4951ec63dfb78670897  ufi103s-debian-v2.1.0-base.tar.gz
 ```
 
-先完整备份，再从 9008 写整块 eMMC；随后用本机原厂备份单独恢复四个校准分区，并回读整盘校验。完整步骤见[刷机指南](docs/FLASHING.md)。
+这是**分区镜像，不是整盘镜像**。同一 Release 的 `ufi103s-debian-v2.1.0-base.tar.gz` 提供 GPT／boot／启动链；结合**目标设备自身**的完整原厂 eMMC 备份，由当前仓库的 `scripts/flash-edl-full-emmc.sh` 组装整盘并在 9008 写入；随后单独恢复同机 `fsc/fsg/modemst1/modemst2`、逐项回读、整盘回读验证。不要执行 `edl wf` 直接写入本文件，不要通过 fastboot 刷写。完整操作请从 [README](https://github.com/maomomo-eth/ufi103s-debian/blob/main/README.md) 和 [9008 刷机指南](https://github.com/maomomo-eth/ufi103s-debian/blob/main/docs/FLASHING.md) 开始。
 
-## 隐私边界
+## 已验证的行为与边界
 
-Release 不包含 `fsc/fsg/modemst1/modemst2`、完整 eMMC 备份、设备回读 rootfs、SIM 标识、IMEI、SSH 私钥或私人 Wi‑Fi 配置。发布镜像保留通用默认热点 `4G-WIFI/12345678`，首次登录后必须更改默认凭据。
+- UFI103S V02：本镜像完成 9008 整盘重刷、四个同机 NV/校准分区单独恢复、整盘回读逐字节一致、冷启动、USB RNDIS/DHCP、Wi‑Fi 热点和密码 SSH；MPSS、蜂窝联网正常。
+- 使用者反馈 UFI103S V02/V03 刷入 Debian 12 并安装 VoCat 后，短信转发可以正常使用；这不是对其他 `UFIx0x` 版本的验证。
+- 首次启动自动生成 SSH 主机密钥，USB 网卡设备侧 `192.168.68.1`、Wi‑Fi 热点 `4G-WIFI/12345678`，SSH 登录 `user/1`。默认密码公开且较弱，使用后应修改。
+- 镜像内已有 `ufi103s-modem-test`、`ufi103s-nm-disable`、`ufi103s-nm-enable`。禁用 NetworkManager 后仍可保留热点、USB DHCP/SSH，但会断开蜂窝数据；Wi‑Fi 要改客户端模式时，先保留或恢复 NetworkManager。
+- 当前仓库新增 `ufi103s-modemmanager`（为 VoCat 独占端口关闭／恢复 ModemManager）；**此已实测镜像不内置该新增脚本**，按 README 中的说明通过 SSH 复制安装即可。重新构建得到的镜像哈希将不同，不应称作本次实测镜像。
+
+脚本对 UFI103S V02/V03 的固定 eMMC 容量和原厂 GPT 进行检查；其他板号即使外形相同，也必须另行确认 SoC、GPT、boot／DTB、容量、基带兼容。备份校准数据是必要条件，不保证跨型号通刷。发布资源不包含任何一台实机的整盘镜像、回读、NV/校准文件、SIM 或私人 Wi‑Fi／SSH 数据。

@@ -1,5 +1,7 @@
 # UFI103S Debian 刷机与射频故障复盘
 
+> 历史故障分析，不是当前操作指令。V02/V03 后续已验证 Debian 与 VoCat 短信使用；现行 9008 全盘流程和已实测 rootfs 见 [README](../README.md)。
+
 ## 硬件与恢复基线
 
 目标板丝印为 `UFI103S_V03`，SoC 为 MSM8916，eMMC 实测容量 `3909091328` 字节。写盘前完成完整 eMMC 备份和 `fsc/fsg/modemst1/modemst2` 分区备份，并复核 SHA-256。所有设备回读数据均保存在仓库之外。
