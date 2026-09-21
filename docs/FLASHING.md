@@ -1,164 +1,99 @@
-# UFI103S V03 Debian 12 刷机指南
+# UFI103S V02/V03 Debian 12：9008 全盘刷机指南
 
-## 1. 确认机型
+本文只使用 `05c6:9008`：先备份原厂整块 eMMC，再将 v2.0.0 写入整块 eMMC，最后从**同一台设备**的原厂备份单独恢复 `fsc/fsg/modemst1/modemst2`，并回读验证。无需进入 fastboot，也不要使用仓库历史 fastboot 刷写脚本。
 
-仅在 PCB 丝印明确为 `UFI103S_V03` 时继续。推荐同时确认 Qualcomm MSM8916、512 MB RAM、4 GB eMMC，以及 EDL USB ID `05c6:9008`。不要只凭外壳判断。
+V03 已验证 Debian 系统、Wi‑Fi 和蜂窝网络；V02 实测原厂 GPT 与 V03 布局相同、全盘写入并逐字节回读一致，启动与网络仍需独立确认。不要把存储层写入验证当作正常启动的证明。
 
-## 2. 准备工具
+## 1. 核对设备和工具
 
-Linux 需要 Android platform-tools 中的 `adb`、`fastboot`；9008 备份需要 `bkerler/edl`。
+仅适用于 PCB 丝印为 `UFI103S_V02` 或 `UFI103S_V03`、Qualcomm MSM8916、原厂 GPT 符合脚本内校验布局、实际 eMMC 容量为 `3909091328` 字节的设备。刷机脚本逐项验证这些存储条件；板号仍需自己观察，不能仅凭 USB ID 或外壳判断。
 
-```bash
-adb version
-fastboot --version
-```
-
-工具不在 `PATH` 时可指定：
+准备 Linux、[bkerler/edl](https://github.com/bkerler/edl)、`uv`、`lsusb`、`rg`、`sha256sum`，以及 v2.0.0 发布包。Git 仓库提供脚本，解压后的 v2.0.0 发布包提供已验证的镜像和 `SHA256SUMS`；旧发布包内自带的 fastboot 说明不适用于本流程。
 
 ```bash
-export ADB=/绝对路径/adb
-export FASTBOOT=/绝对路径/fastboot
+lsusb -d 05c6:9008
+uv --version
+/绝对路径/edl --help
 ```
 
-## 3. 必须先备份
+只有一台 `05c6:9008` 设备映射到当前 Linux 后再继续。KVM 用户先把 9008 映射进虚拟机，完成刷写与回读之前不要断开 USB 或供电，见 [KVM USB 映射](KVM_USB.md)。
 
-强烈建议在任何写入前进入 `05c6:9008`，完成全盘备份：
+## 2. 在 9008 完整备份原厂 eMMC
+
+备份目录必须是仓库外**尚不存在**的新目录，所在磁盘要留出额外至少一整块 eMMC 的空间：
 
 ```bash
 EDL=/绝对路径/edl \
-./scripts/backup-full-emmc.sh /绝对路径/新备份目录
-```
+./scripts/backup-full-emmc.sh /仓库外/stock-本机-日期
 
-实测 eMMC 容量为 `3909091328` 字节，但脚本会读取目标设备的实际容量。备份成功后必须验证：
-
-```bash
-cd /绝对路径/新备份目录
+cd /仓库外/stock-本机-日期
 sha256sum -c SHA256SUMS
 ```
 
-至少需要保留目标设备自己的：
+确认备份含 `original-full-emmc.bin`（`3909091328` 字节）、`partitions/persist.bin`，以及该设备自己的 `partitions/fsc.bin`、`fsg.bin`、`modemst1.bin`、`modemst2.bin`。保存原始备份；**不要**指定备份脚本的 `--reset`，也不要在备份与刷机之间启动原系统，以免 NV 自行变化。不要使用其他设备的校准文件。
 
-```text
-fsc.bin
-fsg.bin
-modemst1.bin
-modemst2.bin
-```
-
-支持 `oem dump` 的 lk2nd 也可运行：
-
-```bash
-./scripts/backup-calibration.sh /绝对路径/新备份目录
-```
-
-这些文件不能从别的设备复制，也不能上传 Git。完整说明见 [9008/EDL 完整备份](EDL_BACKUP.md)。
-
-## 4. 校验 Release
+## 3. 解压 v2.0.0 镜像并校验
 
 ```bash
 tar -xzf ufi103s-debian-v2.0.0-private.tar.gz
-cd ufi103s-debian-v2.0.0
+cd /绝对路径/ufi103s-debian-v2.0.0
 sha256sum -c SHA256SUMS
 ```
 
-所有项目必须显示 `OK`。
+从**本仓库最新版本**运行后续 `scripts/flash-edl-full-emmc.sh`；`--release-dir` 指向上述解压目录。旧发布包内的刷机脚本没有更新为 9008 全盘流程，不能直接运行。
 
-## 5. KVM/virt-manager 用户
+## 4. 先做离线组装（建议）
 
-USB PID 会在 EDL、fastboot 和 Debian 之间变化，每次重新枚举后都可能需要在宿主机重新映射：
-
-- EDL：`05c6:9008`
-- fastboot：`18d1:d00d`
-- Debian gadget：`18d1:d001`
-
-命令见 [KVM USB 映射](KVM_USB.md)。
-
-## 6. 选择刷写方式
-
-### A. 从兼容分区布局的 Debian 11 升级
-
-仅当以下条件全部满足时使用升级脚本：
-
-- 当前 GPT 和 lk2nd/fastboot 能正常工作；
-- 当前 Debian 11 使用与本包兼容的 GPT、lk2nd 和分区布局；
-- `fastboot getvar product` 为 `LK1ST_MSM8916`；
-- 已另行保存完整 eMMC 与校准分区备份。
-
-执行：
+回到 Git 仓库根目录，输出目录必须在仓库外、尚不存在，且文件系统额外至少有约 9.5 GB 空间：
 
 ```bash
-./scripts/flash-debian12-upgrade.sh
+./scripts/flash-edl-full-emmc.sh \
+  --backup-dir /仓库外/stock-本机-日期 \
+  --release-dir /绝对路径/ufi103s-debian-v2.0.0 \
+  --output-dir /仓库外/v2-离线检查-日期 \
+  --prepare-only
 ```
 
-该脚本只擦除并写入 `rootfs` 和 `boot`，不会触碰 GPT、启动链或校准分区。它先写 rootfs，最后写 boot，避免新旧系统不匹配。
+离线模式不连接设备、不写 eMMC。脚本会核对原厂 GPT、同一份原厂整盘备份中的校准数据、发布包所有文件 SHA-256、主备 GPT CRC、分区边界与镜像大小，并生成完整的 `debian-v2-full-emmc.bin`。原发布包的 GPT 模板会动态填写末尾 rootfs 和保护 MBR 大小，同时将条目数量、CRC 一起修正后再写盘；不要将未修补的 `gpt_both0.bin` 直接写进 eMMC。
 
-### B. 全量安装或恢复
+离线检查目录可保留，但正式刷机必须使用**另一个全新输出目录**，不覆盖原文件。
 
-GPT、启动链或原系统不可信时使用：
+## 5. 在 9008 全盘写入、恢复校准并回读
+
+保持设备仍处于 9008，从仓库根目录执行：
 
 ```bash
-./scripts/flash-fastboot.sh --calibration-dir /绝对路径/本机校准备份
+EDL=/绝对路径/edl ./scripts/flash-edl-full-emmc.sh \
+  --backup-dir /仓库外/stock-本机-日期 \
+  --release-dir /绝对路径/ufi103s-debian-v2.0.0 \
+  --output-dir /仓库外/v2-正式刷机-日期
 ```
 
-该脚本会：
+脚本要求键入 `UFI103S-EDL-ERASE` 才开始写盘（无人值守时才使用 `--yes`），流程为：
 
-1. 重写 GPT；
-2. 写入 CDT、HYP、RPM、SBL1、TZ；
-3. 恢复本机 `fsc/fsg/modemst1/modemst2`；
-4. 写入 Debian 12 rootfs；
-5. 最后写入 boot 与 aboot。
+1. 校验原厂备份、Release 和组装镜像；检查当前仅有一台 9008，实际 eMMC 容量与原厂 GPT 匹配。
+2. 再比对当前设备的原厂 `modemst1/modemst2/persist` 与备份，以阻止将别的设备的私有数据写错目标。
+3. 通过 EDL `wf` 从扇区 0 写入整块 eMMC；新分区表、启动链、Debian boot/rootfs 同时落盘。
+4. 通过 EDL `w` **再从原厂备份**单独恢复本机 `fsc/fsg/modemst1/modemst2`；逐项 `r` 回读核对。
+5. 通过 EDL `rf` 回读整块 eMMC，并用 `cmp` 与目标镜像逐字节比较。只有全部一致才报告成功。
 
-全量脚本具有破坏性，绝不能使用其他设备的校准文件。
+默认完成后仍留在 9008；需要验证成功后自动尝试启动时可事先加 `--reset`。即使 `edl` 写入命令退出码为零，也不能跳过设备回读。任一步骤失败应保持 9008、保留私有日志和原厂备份，不要启动不完整系统。
 
-## 7. 进入 fastboot
+全盘写入会清除原有系统和用户数据。原厂全盘备份、回读镜像及日志含设备身份和密码，不能提交到 Git 或上传 Release。程序会拒绝把工作目录放进本 Git 仓库。
 
-USB ID 应为 `18d1:d00d`：
+## 6. 启动与验证
 
-```bash
-fastboot devices
-fastboot getvar product
-```
+整盘回读通过后，再物理断电、重新上电，等待约 60–120 秒。检查 `4G-WIFI` 热点及 `18d1:d001`（Debian ADB + RNDIS）；KVM 下 USB PID 改变需重新映射。`usb.ids` 把 `18d1:d001` 显示为 “Nexus 4 (fastboot)” 不代表设备真的进入 fastboot。
 
-如果只有 `05c6:9008`，应先恢复已知匹配的 UFI103S lk2nd。不要在不清楚 GPT 布局时按固定偏移写 bootloader。
-
-## 8. 首次启动
-
-脚本结束后：
-
-1. 物理断电；
-2. 重新上电并等待约 60–120 秒；
-3. 搜索默认热点 `4G-WIFI`；
-4. KVM 中重新映射 `18d1:d001`。
-
-基础镜像的初始凭据：
-
-```text
-SSID: 4G-WIFI
-Wi-Fi password: 12345678
-Debian user: user
-Debian password: 1
-```
-
-首次登录后立即更改密码和热点配置。不要把个性化连接文件打包回 Release。
-
-## 9. 验证
+基础镜像的初始凭据为 `4G-WIFI / 12345678`，Debian `user / 1`；首次登录立即修改。不要把个性化配置或设备回读 rootfs 打包发布。
 
 ```bash
 ./scripts/check-device.sh
 ./scripts/check-device.sh --network-test
 ```
 
-预期结果：
+预期 MPSS/WCNSS 为 `running`，`rmtfs`、ModemManager、NetworkManager 为 `active`，`mmcli -L` 可见 modem，插卡后 `wwan0` 可联网，热点有 DHCP/DNS/NAT。存储回读通过但不出现热点或 USB 时，应继续排查启动阶段，不能直接宣称系统工作正常。
 
-- MPSS/WCNSS 状态为 `running`；
-- `rmtfs`、ModemManager、NetworkManager 为 `active`；
-- `mmcli -L` 能看到 modem；
-- 插卡后 `wwan0` 获得 IPv4/IPv6；
-- 指定 `wwan0` 的联网测试成功；
-- 热点存在 DHCP、DNS 和 MASQUERADE 规则。
+## 7. 恢复原厂系统
 
-不要在自动拨号尚未结束时反复执行 `nmcli connection up modem`。旧版 QMI 栈偶尔会卡在 `disconnecting`；若停止/重启 ModemManager 后端口没有重新出现，优先整机重启，不要改刷 firmware。
-
-## 10. 恢复
-
-无法启动但还能进入 `05c6:9008` 时，优先使用刷机前的完整 eMMC 备份恢复。不要连续尝试其他板型的 GPT、SBL1、CDT、aboot 或“替换基带”文件。
+若设备无法启动但还能进入 `05c6:9008`，优先使用这台设备的原厂完整 eMMC 备份，核对目标设备、容量、原厂 SHA-256 后再人工评估恢复。不要把其他板型的 GPT、SBL1、CDT、aboot 或别人设备的校准分区混刷。

@@ -4,6 +4,9 @@ set -Eeuo pipefail
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
+echo "此历史 fastboot 写入脚本已停用。请先在 9008 完整备份，使用 scripts/flash-edl-full-emmc.sh 全盘写入并恢复同机校准。" >&2
+exit 2
+
 usage() {
     cat <<'EOF'
 用法：

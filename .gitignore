@@ -2,6 +2,9 @@
 /dist/
 /backup/
 **/original-full-emmc.bin
+**/debian-v2-full-emmc.bin
+**/device-readback.bin
+**/*-full-emmc.bin
 **/fsc.bin
 **/fsg.bin
 **/modemst1.bin

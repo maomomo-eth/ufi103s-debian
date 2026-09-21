@@ -9,8 +9,8 @@
 - 已验证的 UFI103S MPSS firmware 文件集
 - 修复后的 `openstick-sim-changer.sh`
 - UFI103S 对应 GPT、CDT 与启动链
-- 全量刷写及 Debian 11 → Debian 12 升级脚本
-- fastboot 校准备份与 9008/EDL 完整 eMMC 备份脚本
+- 镜像包中历史 fastboot 脚本（已被仓库当前流程取代，不再推荐执行）
+- 9008/EDL 完整 eMMC 备份脚本；本仓库另提供新的 9008 整盘刷机脚本
 - 完整 SHA-256 清单
 
 ## 实机结果
@@ -28,21 +28,19 @@ Debian 12 原始 rootfs 缺少完整 `modem.*`；原包附带的替换 firmware 
 
 原 SIM 脚本用前缀匹配查找 sysfs LED，`sim:sel` 会同时命中 `sim:sel2`，形成无效路径并关闭全部 SIM 槽。本版改用完整字符串匹配。
 
-## 刷写选择
+## 当前刷写方式
 
-已有与本包分区布局兼容的 Debian 11，且 GPT/lk2nd 正常时，使用：
-
-```bash
-./scripts/flash-debian12-upgrade.sh
-```
-
-需要重建 GPT 和启动链时，使用目标设备自己的校准备份：
+发布镜像仍使用 v2.0.0；从**最新仓库**运行新的 9008 整盘刷机脚本，不能运行旧发布包内的 fastboot 刷写脚本：
 
 ```bash
-./scripts/flash-fastboot.sh --calibration-dir /绝对路径/本机校准备份
+EDL=/绝对路径/edl ./scripts/backup-full-emmc.sh /仓库外/新建原厂备份目录
+EDL=/绝对路径/edl ./scripts/flash-edl-full-emmc.sh \
+  --backup-dir /仓库外/新建原厂备份目录 \
+  --release-dir /绝对路径/ufi103s-debian-v2.0.0 \
+  --output-dir /仓库外/新建私有刷机目录
 ```
 
-刷写完成后物理断电再上电。完整步骤见 `docs/FLASHING.md`。
+先完整备份，再从 9008 写整块 eMMC；随后用本机原厂备份单独恢复四个校准分区，并回读整盘校验。完整步骤见[刷机指南](docs/FLASHING.md)。
 
 ## 隐私边界
 
