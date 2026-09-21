@@ -7,6 +7,6 @@
 - 使用者反馈 V02/V03 安装 VoCat 后短信转发正常；其他 UFIx0x 板型尚未验证。
 - 将文档收敛为 9008 完整备份 → 同机备份与配套文件组装整盘 → 写盘并恢复四个校准分区 → 回读 → 首启及 VoCat；删除不适用的 fastboot 刷机入口与重复脚本。
 - 更新 `ufi103s-nm-disable`／`ufi103s-nm-enable`：关闭蜂窝数据时保留 Wi‑Fi 热点、USB DHCP/SSH。新增独立 ModemManager 开关脚本供 VoCat 使用；**本次实测 img 不含新脚本**，可按 README 手动安装。
-- 测试记录：Saily `+1` 漫游中国移动、A1 `+385` 与 HahaSim `+852` 漫游中国联通，均可接收短信。
+- 测试记录：Saily eSIM 小白卡（`+1`）漫游中国移动、A1 eSIM 小白卡（`+385`）与 HahaSim 实体 SIM（`+852`）漫游中国联通，均可接收短信。
 
 早期排障背景见 [技术复盘](docs/POSTMORTEM.md)。
