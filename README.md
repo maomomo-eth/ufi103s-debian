@@ -23,7 +23,7 @@
 
 ## Release
 
-私有可刷包见仓库的 [Releases](../../releases)。`v2.0.0` 包含：
+已发布的可刷包见仓库的 [Releases](../../releases)。`v2.0.0` 包含：
 
 - 与实机匹配的 GPT 和启动链
 - `ufix0x` Debian 12 boot image
@@ -86,6 +86,40 @@ passwd user
 ```
 
 不要把修改后的 NetworkManager 连接文件或设备回读 rootfs 放入 GitHub Release。
+
+## USB / Wi-Fi 密码 SSH（待实机验证的本地镜像改版）
+
+当前 `v2.0.0` Release **不包含**下面的新功能；不要把本节当成已发布镜像的行为。仓库中的构建脚本现在会在改版 rootfs 中启用 RNDIS/ADB、USB 网络 `192.168.68.1/24` 和 SSH；首次启动仅生成设备专属 SSH 主机密钥，不生成或修改登录密码。允许普通用户从 `usb0` 与 `wlan0` 使用密码登录，拒绝 root SSH 登录，并封闭其他接口（包括蜂窝网络）的 TCP 22 端口。USB 地址使用 NetworkManager 的共享连接，宿主机接入后自动获取地址；Wi-Fi 请连接设备热点后从其网关地址登录。
+
+```bash
+ssh user@192.168.68.1                       # USB 网卡
+ssh user@热点网关地址                          # Wi-Fi
+sudo ufi103s-modem-test                       # 只读测试 modem/射频服务
+sudo ufi103s-nm-stop                          # 临时停止 NetworkManager
+sudo ufi103s-nm-disable                       # 持久禁用 NetworkManager
+sudo ufi103s-nm-enable                        # 解除禁用并立即启动
+```
+
+默认 `user/1` 与热点 `4G-WIFI/12345678` 都已公开；按你的要求不自动换密码，因此开启密码 SSH 后必须在可信环境中立即执行 `passwd user` 并更换热点密码。`ufi103s-nm-stop` 只停止到下一次重启；`ufi103s-nm-disable` 会持久屏蔽服务，防止再次被拉起；`ufi103s-nm-enable` 解除屏蔽、设为开机启动并立即启动。停止或禁用均可能断开 Wi-Fi 热点、USB DHCP、蜂窝联网以及当前 SSH 会话；**禁用前先确认 ADB/串口可用，恢复时通过 ADB/串口执行 `sudo ufi103s-nm-enable`**。禁用 NetworkManager 不等于释放 ModemManager 占用的 AT/QMI 端口，安装 VoCat 前仍需按[端口所有权说明](docs/SMS_TROUBLESHOOTING.md#vocat-与-modemmanager-的所有权)处理。测试脚本不发送 AT 命令、不改基带、不写校准分区。
+
+无需重新构建 MPSS，可以对原版 v2.0.0 sparse rootfs 的**副本**生成本地改版镜像：
+
+```bash
+./tools/enable-usb-wifi-ssh-rootfs.sh \
+  --source /绝对路径/ufi103s-debian-v2.0.0/images/rootfs-debian12-ufi103s-fixed.img \
+  --output /仓库外/新建目录/rootfs-usb-wifi-ssh.img
+```
+
+输出镜像尚未刷机验证；不要覆盖原版 Release、设备原厂备份或已有镜像，也不要在未经验证前宣称此版已通过实机测试。
+
+今后若按[9008 全盘流程](docs/FLASHING.md)刷入此改版，仍需先备份原机，使用原版 v2.0.0 `--release-dir`，并在刷机脚本原有参数后显式追加：
+
+```bash
+--rootfs-override /仓库外/新建目录/rootfs-usb-wifi-ssh.img \
+--rootfs-sha256 "$(sha256sum /仓库外/新建目录/rootfs-usb-wifi-ssh.img | cut -d ' ' -f 1)"
+```
+
+先用 `--prepare-only` 做不连接设备的整盘组装复核。这个参数只替换 rootfs 来源，不绕过 Release 完整性校验、原厂备份检查或同机校准恢复；不可混用别人的原厂分区。
 
 ## USB 模式
 

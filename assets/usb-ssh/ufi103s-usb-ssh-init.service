@@ -1,0 +1,14 @@
+[Unit]
+Description=初始化 UFI103S USB 网络和独立 SSH 主机密钥
+Wants=NetworkManager.service linux-adbd-utils.service
+After=NetworkManager.service linux-adbd-utils.service netfilter-persistent.service
+Before=ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ufi103s-usb-ssh-init
+TimeoutStartSec=75
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

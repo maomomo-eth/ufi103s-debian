@@ -2,6 +2,8 @@
 
 本文只使用 `05c6:9008`：先备份原厂整块 eMMC，再将 v2.0.0 写入整块 eMMC，最后从**同一台设备**的原厂备份单独恢复 `fsc/fsg/modemst1/modemst2`，并回读验证。无需进入 fastboot，也不要使用仓库历史 fastboot 刷写脚本。
 
+如需使用仓库新增的 USB/Wi-Fi 密码 SSH 本地改版 rootfs，不要改写 v2.0.0 Release 原包或它的 `SHA256SUMS`。先按 [README 的本地改版说明](../README.md#usb--wi-fi-密码-ssh待实机验证的本地镜像改版) 从干净的 v2.0.0 rootfs 生成改版镜像，再在本页原有刷机命令后附加 `--rootfs-override /仓库外/改版.img --rootfs-sha256 镜像SHA256`；最好先加 `--prepare-only` 检查整盘组装。其余原机备份、9008 全盘写入、原机校准恢复与整盘回读的步骤完全不变。改版镜像尚未实机验证。
+
 V03 已验证 Debian 系统、Wi‑Fi 和蜂窝网络；V02 实测原厂 GPT 与 V03 布局相同、全盘写入并逐字节回读一致，启动与网络仍需独立确认。不要把存储层写入验证当作正常启动的证明。
 
 ## 1. 核对设备和工具

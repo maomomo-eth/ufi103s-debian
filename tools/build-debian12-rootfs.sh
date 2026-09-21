@@ -123,6 +123,7 @@ done
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 sim_script="$script_dir/openstick-sim-changer.sh"
 sparse_tool="$script_dir/android_sparse.py"
+usb_ssh_assets="$script_dir/../assets/usb-ssh"
 if [[ ! -s "$sim_script" ]]; then
     echo "缺少 SIM 修复脚本：$sim_script" >&2
     exit 1
@@ -131,6 +132,14 @@ if [[ ! -s "$sparse_tool" ]]; then
     echo "缺少 sparse 转换工具：$sparse_tool" >&2
     exit 1
 fi
+for name in usb.nmconnection 20-ufi103s-usb.conf ufi103s-usb-ssh-init.service \
+    10-ufi103s-init.conf ufi103s-usb-ssh-init.sh ufi103s-modem-test.sh \
+    ufi103s-nm-stop.sh ufi103s-nm-disable.sh ufi103s-nm-enable.sh; do
+    if [[ ! -s "$usb_ssh_assets/$name" ]]; then
+        echo "缺少 USB/SSH 初始化资产：$usb_ssh_assets/$name" >&2
+        exit 1
+    fi
+done
 
 privilege=()
 if ((EUID != 0)); then
@@ -175,6 +184,42 @@ for name in "${firmware_files[@]}"; do
     "${privilege[@]}" install -m 0644 -- "$firmware_dir/$name" "$mount_dir/lib/firmware/$name"
 done
 "${privilege[@]}" install -m 0755 -- "$sim_script" "$mount_dir/usr/sbin/openstick-sim-changer.sh"
+
+echo "启用 USB 网络与首启 SSH 主机密钥生成……"
+"${privilege[@]}" install -D -m 0600 -- "$usb_ssh_assets/usb.nmconnection" \
+    "$mount_dir/etc/NetworkManager/system-connections/usb.nmconnection"
+"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-usb-ssh-init.sh" \
+    "$mount_dir/usr/local/sbin/ufi103s-usb-ssh-init"
+"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-modem-test.sh" \
+    "$mount_dir/usr/local/sbin/ufi103s-modem-test"
+"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-nm-stop.sh" \
+    "$mount_dir/usr/local/sbin/ufi103s-nm-stop"
+"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-nm-disable.sh" \
+    "$mount_dir/usr/local/sbin/ufi103s-nm-disable"
+"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-nm-enable.sh" \
+    "$mount_dir/usr/local/sbin/ufi103s-nm-enable"
+"${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/ufi103s-usb-ssh-init.service" \
+    "$mount_dir/etc/systemd/system/ufi103s-usb-ssh-init.service"
+"${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/10-ufi103s-init.conf" \
+    "$mount_dir/etc/systemd/system/ssh.service.d/10-ufi103s-init.conf"
+"${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/20-ufi103s-usb.conf" \
+    "$mount_dir/etc/ssh/sshd_config.d/20-ufi103s-usb.conf"
+if ! "${privilege[@]}" grep -Fqx 'Include /etc/ssh/sshd_config.d/*.conf' \
+    "$mount_dir/etc/ssh/sshd_config"; then
+    echo "源镜像 sshd_config 未加载配置目录，拒绝构建。" >&2
+    exit 1
+fi
+"${privilege[@]}" install -d -m 0755 -- "$mount_dir/etc/systemd/system/multi-user.target.wants"
+"${privilege[@]}" ln -s -- /etc/systemd/system/ufi103s-usb-ssh-init.service \
+    "$mount_dir/etc/systemd/system/multi-user.target.wants/ufi103s-usb-ssh-init.service"
+"${privilege[@]}" ln -s -- /lib/systemd/system/ssh.service \
+    "$mount_dir/etc/systemd/system/multi-user.target.wants/ssh.service"
+for obsolete in mobian-setup-usb-network.service mobian-ssh-keygen.service mobian-usb-gadget.service; do
+    old_link="$mount_dir/etc/systemd/system/multi-user.target.wants/$obsolete"
+    if [[ -L "$old_link" && ! -e "$old_link" ]]; then
+        "${privilege[@]}" rm -- "$old_link"
+    fi
+done
 
 echo "清理基础镜像中的预生成身份和历史记录……"
 "${privilege[@]}" rm -f -- "$mount_dir"/etc/ssh/ssh_host_*_key "$mount_dir"/etc/ssh/ssh_host_*_key.pub
