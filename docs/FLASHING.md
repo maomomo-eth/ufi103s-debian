@@ -15,7 +15,7 @@ lsusb -d 05c6:9008
 
 只允许**一台** `05c6:9008` 设备映射到本机。KVM 虚拟机每次 USB ID 切换都要重新映射，见 [USB 映射](KVM_USB.md)。刷写期间请保持供电和 USB 连接；不要通过 fastboot 写分区。
 
-准备当前仓库的脚本、[bkerler/edl](https://github.com/bkerler/edl)、`uv`、`rg`、`lsusb`、`sha256sum`。从 [v2.1.0 Release](../../releases/tag/v2.1.0) 下载两个文件：`ufi103s-debian-v2.1.0-base.tar.gz`（GPT、启动链、boot 及 `SHA256SUMS`）与已实测的 `rootfs-debian12-usb-wifi-ssh-local-network.img`。解压基础包并指定其实际路径：
+准备当前仓库的脚本、[bkerler/edl](https://github.com/bkerler/edl)、`uv`、`rg`、`lsusb`、`sha256sum`。从 [v2.1.0 Release](https://github.com/maomomo-eth/ufi103s-debian/releases/tag/v2.1.0) 下载两个文件：`ufi103s-debian-v2.1.0-base.tar.gz`（GPT、启动链、boot 及 `SHA256SUMS`）与已实测的 `rootfs-debian12-usb-wifi-ssh-local-network.img`。解压基础包并指定其实际路径：
 
 ```bash
 export EDL=/绝对路径/edl

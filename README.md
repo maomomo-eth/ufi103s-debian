@@ -6,8 +6,8 @@
 
 ## 镜像与备份
 
-- 最新实测 rootfs：`rootfs-debian12-usb-wifi-ssh-local-network.img`（[v2.1.0 Release](../../releases/tag/v2.1.0)），SHA-256：`5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50`。
-- 同一 [v2.1.0 Release](../../releases/tag/v2.1.0) 中的 `ufi103s-debian-v2.1.0-base.tar.gz` 提供组装整盘所需的 GPT、启动链、`ufix0x` boot 及校验清单；使用**本仓库当前脚本**，并显式指定上述 rootfs。
+- 最新实测 rootfs：`rootfs-debian12-usb-wifi-ssh-local-network.img`（[v2.1.0 Release](https://github.com/maomomo-eth/ufi103s-debian/releases/tag/v2.1.0)），SHA-256：`5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50`。
+- 同一 [v2.1.0 Release](https://github.com/maomomo-eth/ufi103s-debian/releases/tag/v2.1.0) 中的 `ufi103s-debian-v2.1.0-base.tar.gz` 提供组装整盘所需的 GPT、启动链、`ufix0x` boot 及校验清单；使用**本仓库当前脚本**，并显式指定上述 rootfs。
 - `.img` 是 Android sparse 格式的 **rootfs 分区镜像，不是整盘镜像**；不能直接执行 `edl wf 此文件`。正式刷入的是脚本结合原机备份生成的 `debian-v2-full-emmc.bin`。
 - 原厂完整 eMMC、`modem.bin`/固件及 `fsc/fsg/modemst1/modemst2/persist` 等数据必须来自**正在刷的这一台设备**；备份和整盘输出放在仓库之外，不能上传 Release。
 
