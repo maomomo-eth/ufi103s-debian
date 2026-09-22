@@ -1,0 +1,15 @@
+[connection]
+id=usb
+uuid=c114f48e-be80-4e4f-b942-666e354233f0
+type=ethernet
+interface-name=usb0
+autoconnect=true
+
+[ipv4]
+method=shared
+address1=192.168.68.1/24
+never-default=true
+route-metric=1500
+
+[ipv6]
+method=disabled

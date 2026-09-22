@@ -1,0 +1,36 @@
+--- vendor-1.2.dts
++++ vendor-1.2-modem-fixed.dts
+@@ -65,6 +65,12 @@
+ 			no-map;
+ 		};
+ 
++		mpss@86800000 {
++			reg = <0x00 0x86800000 0x00 0x5500000>;
++			no-map;
++			phandle = <0x14>;
++		};
++
+ 		wcnss@8df00000 {
+ 			reg = <0x00 0x8df00000 0x00 0x600000>;
+ 			no-map;
+@@ -255,6 +261,19 @@
+ 		status = "disabled";
+ 		#address-cells = <0x01>;
+ 		#size-cells = <0x00>;
++
++		mpss@0 {
++			reg = <0x00>;
++			qcom,qrtr-node = <0x00>;
++			#address-cells = <0x01>;
++			#size-cells = <0x00>;
++
++			gps@0 {
++				reg = <0x00>;
++				memory-region = <0x14>;
++				phandle = <0x13>;
++			};
++		};
+ 	};
+ 
+ 	pmu {
+

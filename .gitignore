@@ -1,0 +1,17 @@
+/release/
+/dist/
+/backup/
+**/original-full-emmc.bin
+**/debian-v2-full-emmc.bin
+**/device-readback.bin
+**/*-full-emmc.bin
+**/fsc.bin
+**/fsg.bin
+**/modemst1.bin
+**/modemst2.bin
+**/ssh_host_*_key
+__pycache__/
+*.pyc
+*.log
+*.raw
+*.bin.readback
