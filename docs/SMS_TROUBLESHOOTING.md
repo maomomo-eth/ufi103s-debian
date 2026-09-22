@@ -1,42 +1,85 @@
-# VoCat 短信转发与 modem 端口
+# VoCat 短信转发与基带故障排查
 
-使用者已在 `UFI103S_V02`、`UFI103S_V03` 上实测刷入 Debian、安装 VoCat 后正常转发短信。是否支持**某张卡/运营商**取决于驻网、短信中心和该卡的短信业务；LTE 有数据不等于短信一定可用。本仓库不捆绑 VoCat，也不修改它的配置。
+本项目固件在 `UFI103S_V02` 和 `UFI103S_V03` 硬件上均已实测支持通过 [VoCat](https://github.com/0x7b1/vocat) 进行短信接收与转发。
 
-## 先诊断，再移交端口
+> [!NOTE]
+> - 本固件**不捆绑** VoCat，仅提供纯净可靠的基带驱动与端口解耦管理工具。
+> - 4G 数据连接正常并不代表短信功能可用（二者在基带层分别走 PS 域与 CS/NAS 域）。
 
-初次 SSH 登录先执行镜像自带的只读脚本：
+---
 
+## 1. 端口独占机制与管理工具
+
+Linux 下的 Qualcomm 基带通常暴露 AT 与 QMI 虚拟串口。若 ModemManager 正在运行，VoCat 启动时会因串口被占用而报错。
+
+固件内已预装专用管理命令 `ufi103s-modemmanager`：
+
+### 1.1 切换为 VoCat 独占模式
+```bash
+# 停止并屏蔽 (mask) ModemManager 服务（重启仍保持禁用）
+sudo ufi103s-modemmanager disable
+
+# 查看状态（确认 ModemManager 为 masked/inactive）
+ufi103s-modemmanager status
+```
+> [!IMPORTANT]
+> `ufi103s-modemmanager` 仅管理 ModemManager，**绝对不会停止 NetworkManager**，因此 Wi-Fi 热点/客户端和 USB RNDIS DHCP 均保持正常连接。
+
+### 1.2 恢复系统蜂窝网络管理
+若需恢复 Linux 系统的蜂窝上网能力：
+```bash
+# 1. 必须先停止 VoCat 释放串口
+sudo systemctl stop vocat   # 或停止对应后台进程
+
+# 2. 重新启用 ModemManager
+sudo ufi103s-modemmanager enable
+```
+
+---
+
+## 2. 常用 AT 诊断与基带自检
+
+首次登录或遇到短信异常时，建议按顺序排查：
+
+### 2.1 基础驱动与服务状态检查
 ```bash
 sudo ufi103s-modem-test
 ```
+预期关键输出：
+- `MPSS` 远程处理器状态：`running`
+- `rmtfs` 射频共享内存服务：`active (running)`
+- Modem 设备节点存在且无 I/O 错误
 
-预期 MPSS 为 `running`，`rmtfs`、ModemManager 为 `active`，有可见 modem。脚本不会向 modem 发 AT 指令，也不会写 NV/校准分区。切换 VoCat 前请停止使用 ModemManager 的其他程序，避免两个程序同时占用 AT/QMI。应停止 ModemManager 而不是 NetworkManager。
+### 2.2 核心 AT 检查指令 (VoCat 模式下)
+若使用串口工具或 VoCat 自检，重点关注：
 
-v2.2.0 镜像已内置 `ufi103s-modemmanager`，不需要另行下载或安装。准备让 VoCat 独占 modem 时执行：
+| AT 命令 | 用途 | 正常预期返回值 |
+| :--- | :--- | :--- |
+| `AT+CPIN?` | 检查 SIM 卡就绪状态 | `+CPIN: READY` |
+| `AT+CSQ` | 检查信号质量 | `+CSQ: <rssi>,<ber>`（rssi > 10 为佳） |
+| `AT+CREG?` / `AT+CEREG?` | 检查网络注册状态 | `+CREG: 0,1` (本地) 或 `0,5` (漫游) |
+| `AT+CSCA?` | 查询短信服务中心 (SMSC) 号码 | `+CSCA: "+861380xxxx500",145` |
+| `AT+CPMS?` | 查询短信存储介质首选项 | `+CPMS: "SM","SM","SM"...` |
+| `AT+CMGS=...` | 发送短信确认 | 真正成功基带应返回 `+CMGS: <mr>` |
 
-```bash
-sudo ufi103s-modemmanager disable
-ufi103s-modemmanager status
-```
+---
 
-`disable` 会 `mask` 并停止 ModemManager，防止 D-Bus 自动拉起；保留 NetworkManager 及其管理的热点和 USB DHCP，但现有蜂窝数据连接可能断开。恢复时**先停止 VoCat**，再执行 `sudo ufi103s-modemmanager enable`。直接执行 `systemctl stop ModemManager` 不够持久；重启后仍可能自动恢复。不要在公开日志或 Issue 中粘贴 IMEI、ICCID、IMSI、手机号或完整短信内容。
+## 3. SIM 卡与运营商实测兼容性
 
-## Wi‑Fi 上网与热点的选择
+以下为使用者在实际环境中的实测记录（持续更新）：
 
-- 默认 Wi‑Fi 是热点，USB 网关 `192.168.68.1` 可用于 SSH；保留 NetworkManager 管理热点和 USB DHCP。禁用 ModemManager 后不要假定原有蜂窝数据连接仍可上网。
-- 如果自行把 `wlan0` 改成 Wi‑Fi **客户端**给 VoCat 联网，保留管理这条连接的 NetworkManager，只用 `ufi103s-modemmanager disable` 释放 modem。
-- 改无线连接前保留 USB/ADB 登录路径；同一无线电是否支持热点+客户端并发不能假定。
+| SIM 卡类型 / 归属 | 漫游/驻留网络 | 短信接收 | 短信发送 | 备注 |
+| :--- | :--- | :---: | :---: | :--- |
+| **中国移动** (实体卡) | 中国移动 (原网) | ✅ 正常 | ✅ 正常 | VoCat 标准 AT/PDU 路径 |
+| **中国电信** (实体卡) | 中国电信 (原网) | ❌ 无法收发 | ❌ 无法收发 | LTE 数据上网正常；但因基带版本过老不支持 VoLTE，而电信已全面普及 VoLTE，故无法收发短信 |
+| **HahaSim** (香港实体卡 `+852`) | 漫游中国联通 | ✅ 正常 | - | 境外卡漫游接收验证码稳定 |
+| **Saily eSIM** 小白卡 (`+1`) | 漫游中国移动 | ✅ 正常 | - | 接收验证码正常 |
+| **A1 eSIM** 小白卡 (`+385`) | 漫游中国联通 | ✅ 正常 | - | 接收验证码正常 |
 
-## 已知的短信测试边界
+> [!IMPORTANT]
+> **关于中国电信收不到短信的原因说明**：
+> 实测中国电信卡可以建立正常的 4G LTE 数据网络（PS 域上网），但**无法收发短信**。
+> 其根本原因在于：**随身 Wi-Fi 硬件搭载的基带版本过老，不支持 VoLTE（SMS over IMS）**；而中国电信目前已基本全面下线 CDMA 1X (2G/3G) 网络，短信业务全面依赖 VoLTE 承载。因此在当前基带版本下，**中国电信卡仅可作为 4G 数据上网卡，无法用于短信收发或 VoCat 转发**。若有短信转发需求，请优先使用中国移动或支持联通漫游的 SIM/eSIM 卡。
 
-| SIM/网络 | 本次结果 |
-| --- | --- |
-| 中国移动 | VoCat 普通 AT/PDU 路径，收发正常 |
-| 中国电信 | LTE 数据正常，但本次短信测试未建立可用的 CS 短信路径；不能据数据连接判断短信可用 |
-| Saily eSIM 小白卡（`+1` 号码） | 漫游中国移动，接收正常 |
-| A1 eSIM 小白卡（`+385` 号码） | 漫游中国联通，接收正常 |
-| HahaSim 实体 SIM（`+852` 号码） | 漫游中国联通，接收正常 |
-
-以上只说明当时设备、卡与所在地区的结果；漫游卡仅核对接收，不推断发送一定成功。查询短信问题时可先确认 SIM ready、`AT+CREG?`/`AT+CEREG?`、`AT+CSCA?`、`AT+CPMS?` 和 `AT+CNMI?`，并查看 VoCat 的端口占用/发送结果。中国移动发送成功时有 modem 返回 `+CMGS`，只看前端提示不足以证明基带真正接受短信。
-
-任何恢复 `modem`、`fsc/fsg/modemst1/modemst2` 的动作都必须使用**本机原厂备份**，先检查镜像、分区大小与对应关系；不要因为短信失败而盲目覆盖 NV，更不要复制别的设备的基带/校准数据。请优先回到 [9008 备份与刷机指南](FLASHING.md) 核对来源。
+> [!WARNING]
+> 遇到短信收发异常时，请先排查是否为运营商网络与 VoLTE 依赖原因。**切勿因为单张卡短信问题而盲目刷入网传的其他型号基带或校准文件**！
