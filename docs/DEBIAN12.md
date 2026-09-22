@@ -4,27 +4,12 @@
 
 ## 输入文件
 
-Debian 12 原始归档：
+从 `debian12-jsbsbxjxh66` 解压内容中选用：
 
-```text
-debian12-jsbsbxjxh66.7z
-SHA-256 e03ef31e2f7e314ffc0a11da42b3068dbca6ac34102b123e807738283cf1f4ef
-```
-
-选用 boot：
-
-```text
-msm8916-jsbsbxjxh66-ufix0x-1.0.dtb-boot.img
-SHA-256 4d992bb0210a4cb7ce371a378e35580b7d21b5764a2573c73e56805a2ee32af5
-```
+- `debian12-酷安-jsbsbxjxh66/jsbsbxjxh66/rootfs.img`：原始 Debian 12 sparse rootfs。
+- `debian12-酷安-jsbsbxjxh66/jsbsbxjxh66-boot/msm8916-jsbsbxjxh66-ufix0x-1.0.dtb-boot.img`：boot 镜像。
 
 DTB model 明确包含 `ufi-103x`，并具备 `rmtfs`、MPSS 和 memshare 节点。boot command line 的 root UUID 与 Debian 12 rootfs 一致。
-
-原始 Debian 12 sparse rootfs：
-
-```text
-SHA-256 9d8ba302f5a717b5e7423987930c984a0c776e9382b7a035c7526a8d35c2f505
-```
 
 ## rootfs 修正
 
