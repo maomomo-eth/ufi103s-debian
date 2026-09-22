@@ -10,24 +10,21 @@
 sudo ufi103s-modem-test
 ```
 
-预期 MPSS 为 `running`，`rmtfs`、ModemManager 为 `active`，有可见 modem。脚本不会向 modem 发 AT 指令，也不会写 NV/校准分区。切换 VoCat 前请停止使用 ModemManager 的其他程序，避免两个程序同时占用 AT/QMI。`ufi103s-nm-disable` **只关闭 NetworkManager 和蜂窝联网**，不会释放 ModemManager 占用的端口。
+预期 MPSS 为 `running`，`rmtfs`、ModemManager 为 `active`，有可见 modem。脚本不会向 modem 发 AT 指令，也不会写 NV/校准分区。切换 VoCat 前请停止使用 ModemManager 的其他程序，避免两个程序同时占用 AT/QMI。应停止 ModemManager 而不是 NetworkManager。
 
-已实测 v2.1.0 rootfs **没有**下面新加的 `ufi103s-modemmanager` 命令。当前设备先从仓库拷贝一次；以后重新构建的镜像会包含它：
+v2.2.0 镜像已内置 `ufi103s-modemmanager`，不需要另行下载或安装。准备让 VoCat 独占 modem 时执行：
 
 ```bash
-scp assets/usb-ssh/ufi103s-modemmanager.sh user@192.168.68.1:/home/user/
-ssh user@192.168.68.1
-sudo install -m 0755 /home/user/ufi103s-modemmanager.sh /usr/local/sbin/ufi103s-modemmanager
 sudo ufi103s-modemmanager disable
 ufi103s-modemmanager status
 ```
 
-`disable` 会 `mask` 并停止 ModemManager，防止 D-Bus 自动拉起；不会关闭热点和 USB。恢复时**先停止 VoCat**，再执行 `sudo ufi103s-modemmanager enable`。直接执行 `systemctl stop ModemManager` 不够持久；重启后仍可能自动恢复。不要在公开日志或 Issue 中粘贴 IMEI、ICCID、IMSI、手机号或完整短信内容。
+`disable` 会 `mask` 并停止 ModemManager，防止 D-Bus 自动拉起；保留 NetworkManager 及其管理的热点和 USB DHCP，但现有蜂窝数据连接可能断开。恢复时**先停止 VoCat**，再执行 `sudo ufi103s-modemmanager enable`。直接执行 `systemctl stop ModemManager` 不够持久；重启后仍可能自动恢复。不要在公开日志或 Issue 中粘贴 IMEI、ICCID、IMSI、手机号或完整短信内容。
 
 ## Wi‑Fi 上网与热点的选择
 
-- 默认 Wi‑Fi 是热点，USB 网关 `192.168.68.1` 可用于 SSH。使用 `ufi103s-nm-disable` 后依靠独立 `wpa_supplicant`/`dnsmasq` 继续保持热点和 USB DHCP，但**不提供蜂窝数据上网**。
-- 如果自行把 `wlan0` 改成 Wi‑Fi **客户端**给 VoCat 联网，应保留管理该 Wi‑Fi 连接的 NetworkManager，只用 `ufi103s-modemmanager disable` 释放 modem。运行 `ufi103s-nm-disable` 会夺回 `wlan0` 作为热点，使客户端连接断开。
+- 默认 Wi‑Fi 是热点，USB 网关 `192.168.68.1` 可用于 SSH；保留 NetworkManager 管理热点和 USB DHCP。禁用 ModemManager 后不要假定原有蜂窝数据连接仍可上网。
+- 如果自行把 `wlan0` 改成 Wi‑Fi **客户端**给 VoCat 联网，保留管理这条连接的 NetworkManager，只用 `ufi103s-modemmanager disable` 释放 modem。
 - 改无线连接前保留 USB/ADB 登录路径；同一无线电是否支持热点+客户端并发不能假定。
 
 ## 已知的短信测试边界

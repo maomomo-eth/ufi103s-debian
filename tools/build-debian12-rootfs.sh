@@ -132,10 +132,9 @@ if [[ ! -s "$sparse_tool" ]]; then
     echo "缺少 sparse 转换工具：$sparse_tool" >&2
     exit 1
 fi
-for name in usb.nmconnection 20-ufi103s-usb.conf ufi103s-usb-ssh-init.service \
+for name in usb.nmconnection 20-ufi103s-usb.conf ufi103s-wifi.conf ufi103s-usb-ssh-init.service \
     10-ufi103s-init.conf ufi103s-usb-ssh-init.sh ufi103s-modem-test.sh \
-    ufi103s-nm-disable.sh ufi103s-nm-enable.sh ufi103s-modemmanager.sh \
-    ufi103s-local-network.sh ufi103s-local-network.service; do
+    ufi103s-modemmanager.sh; do
     if [[ ! -s "$usb_ssh_assets/$name" ]]; then
         echo "缺少 USB/SSH 初始化资产：$usb_ssh_assets/$name" >&2
         exit 1
@@ -181,6 +180,20 @@ fi
 
 echo "安装 MPSS firmware 与 SIM 修复……"
 "${privilege[@]}" mount -o loop,rw -- "$raw_image" "$mount_dir"
+if [[ -L "$mount_dir/etc/systemd/system/NetworkManager.service" ]]; then
+    echo '源镜像屏蔽了 NetworkManager，拒绝构建。' >&2
+    exit 1
+fi
+# 重用旧镜像作为输入时，也不让曾经的 NM 开关或热点接管服务进入新镜像。
+for obsolete in \
+    /usr/local/sbin/ufi103s-nm-stop \
+    /usr/local/sbin/ufi103s-nm-disable \
+    /usr/local/sbin/ufi103s-nm-enable \
+    /usr/local/sbin/ufi103s-local-network \
+    /etc/systemd/system/ufi103s-local-network.service \
+    /etc/systemd/system/multi-user.target.wants/ufi103s-local-network.service; do
+    "${privilege[@]}" rm -f -- "$mount_dir$obsolete"
+done
 for name in "${firmware_files[@]}"; do
     "${privilege[@]}" install -m 0644 -- "$firmware_dir/$name" "$mount_dir/lib/firmware/$name"
 done
@@ -193,16 +206,10 @@ echo "启用 USB 网络与首启 SSH 主机密钥生成……"
     "$mount_dir/usr/local/sbin/ufi103s-usb-ssh-init"
 "${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-modem-test.sh" \
     "$mount_dir/usr/local/sbin/ufi103s-modem-test"
-"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-nm-disable.sh" \
-    "$mount_dir/usr/local/sbin/ufi103s-nm-disable"
-"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-nm-enable.sh" \
-    "$mount_dir/usr/local/sbin/ufi103s-nm-enable"
 "${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-modemmanager.sh" \
     "$mount_dir/usr/local/sbin/ufi103s-modemmanager"
-"${privilege[@]}" install -D -m 0755 -- "$usb_ssh_assets/ufi103s-local-network.sh" \
-    "$mount_dir/usr/local/sbin/ufi103s-local-network"
-"${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/ufi103s-local-network.service" \
-    "$mount_dir/etc/systemd/system/ufi103s-local-network.service"
+"${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/ufi103s-wifi.conf" \
+    "$mount_dir/etc/modules-load.d/ufi103s-wifi.conf"
 "${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/ufi103s-usb-ssh-init.service" \
     "$mount_dir/etc/systemd/system/ufi103s-usb-ssh-init.service"
 "${privilege[@]}" install -D -m 0644 -- "$usb_ssh_assets/10-ufi103s-init.conf" \

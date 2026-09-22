@@ -13,12 +13,13 @@ usage() {
 用法：
   ./scripts/flash-edl-full-emmc.sh \
     --backup-dir /绝对路径/本机原厂全盘备份 \
-    --release-dir /绝对路径/ufi103s-debian-v2.1.0-base \
+    --release-dir /绝对路径/ufi103s-debian-v2.2.0-base \
     --output-dir /仓库外的全新私有目录 [--yes] [--reset] \
     --rootfs-override /绝对路径/实测rootfs.img --rootfs-sha256 64位摘要
 
 选项：
   --prepare-only    只组装并验证整盘镜像，不连接设备、不写入 eMMC
+  --reflash-debian   仅用于已安装本仓库 Debian 的同机重刷；核对 Debian GPT、原机 EDL 串号和 fsc
   --loader FILE     指定与目标设备匹配的 Firehose loader
   --yes             跳过写盘前的交互确认
   --reset           完成整盘回读后发送 EDL reset；默认停在 9008
@@ -41,6 +42,7 @@ rootfs_sha256=""
 prepare_only=0
 assume_yes=0
 reset_after=0
+reflash_debian=0
 while (($#)); do
     case "$1" in
         --backup-dir|--release-dir|--output-dir|--loader|--rootfs-override|--rootfs-sha256)
@@ -59,6 +61,7 @@ while (($#)); do
             shift 2
             ;;
         --prepare-only) prepare_only=1; shift ;;
+        --reflash-debian) reflash_debian=1; shift ;;
         --yes) assume_yes=1; shift ;;
         --reset) reset_after=1; shift ;;
         -h|--help) usage; exit 0 ;;
@@ -185,14 +188,35 @@ fi
 "$edl_bin" rs 0 34 "$output_dir/target-gpt-before.bin" "${edl_options[@]}" \
     > "$output_dir/preflight-gpt-readback.log" 2>&1
 test "$(stat -c '%s' "$output_dir/target-gpt-before.bin")" -eq $((34 * 512))
-if ! cmp -n $((34 * 512)) "$backup_dir/original-full-emmc.bin" \
+if ((reflash_debian)); then
+    expected_gpt="$image"
+else
+    expected_gpt="$backup_dir/original-full-emmc.bin"
+fi
+if ! cmp -n $((34 * 512)) "$expected_gpt" \
     "$output_dir/target-gpt-before.bin" >/dev/null; then
-    echo "当前设备 GPT 与这份原厂备份不一致，拒绝写盘；请核对是否映射了正确的设备。" >&2
+    echo '当前设备 GPT 与本次刷机模式期望的布局不一致，拒绝写盘；请核对设备及 --reflash-debian 参数。' >&2
     exit 1
 fi
-# 原厂 GPT 可能在多块板上完全相同；再比较会随设备而异的原厂分区。
-# 必须是同一台设备刚完成的原厂备份，期间不得启动原系统使 NV 自行改动。
-for partition in modemst1 modemst2 persist; do
+# GPT 在多台设备上可能一致；必须再核对同机硬件串号和私有数据。
+# Debian GPT 没有 persist 分区；运行中的基带可能更新 fsg 和 modemst1/2，
+# 因此已装 Debian 的设备不能用这些旧备份文件做逐字节身份判定。
+if ((reflash_debian)); then
+    original_edl_log="$backup_dir/edl-printgpt.log"
+    [[ -s "$original_edl_log" ]] || {
+        echo '原厂备份没有 EDL 硬件串号日志，不能安全重刷。' >&2; exit 1;
+    }
+    original_serial="$(sed -n 's/^[[:space:]]*Serial:[[:space:]]*\(0x[[:xdigit:]]*\).*/\1/p' "$original_edl_log" | head -n 1)"
+    current_serial="$(sed -n 's/^[[:space:]]*Serial:[[:space:]]*\(0x[[:xdigit:]]*\).*/\1/p' "$output_dir/preflight-printgpt.log" | head -n 1)"
+    if [[ -z "$original_serial" || "$original_serial" == 0x0 || "$original_serial" != "$current_serial" ]]; then
+        echo '当前设备 EDL 硬件串号与原厂备份不一致，拒绝写盘。' >&2; exit 1;
+    fi
+    identity_partitions=(fsc)
+else
+    # 首次刷机必须在备份后、原系统重新启动前执行，校验当时的 NV 状态。
+    identity_partitions=(modemst1 modemst2 persist)
+fi
+for partition in "${identity_partitions[@]}"; do
     "$edl_bin" r "$partition" "$output_dir/target-$partition-before.bin" "${edl_options[@]}" \
         > "$output_dir/preflight-$partition.log" 2>&1
     if ! cmp -s "$backup_dir/partitions/$partition.bin" \

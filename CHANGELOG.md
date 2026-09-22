@@ -1,12 +1,12 @@
 # 更新记录
 
-## v2.1.0 - 2026-09-22
+## v2.2.0 - 2026-09-22
 
-- 发布实测 sparse rootfs（SHA-256 `5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50`）及 GPT／启动链／boot 配套包；两个文件都可从同一 Release 获取，不含实机私有备份。
-- V02 9008 整盘写入、同机四个校准分区恢复、整盘逐字节回读成功；冷启动后 USB RNDIS/DHCP、热点、密码 SSH 与蜂窝联网正常。首次启动生成独立 SSH 主机密钥。
-- 使用者反馈 V02/V03 安装 VoCat 后短信转发正常；其他 UFIx0x 板型尚未验证。
-- 将文档收敛为 9008 完整备份 → 同机备份与配套文件组装整盘 → 写盘并恢复四个校准分区 → 回读 → 首启及 VoCat；删除不适用的 fastboot 刷机入口与重复脚本。
-- 更新 `ufi103s-nm-disable`／`ufi103s-nm-enable`：关闭蜂窝数据时保留 Wi‑Fi 热点、USB DHCP/SSH。新增独立 ModemManager 开关脚本供 VoCat 使用；**本次实测 img 不含新脚本**，可按 README 手动安装。
-- 测试记录：Saily eSIM 小白卡（`+1`）漫游中国移动、A1 eSIM 小白卡（`+385`）与 HahaSim 实体 SIM（`+852`）漫游中国联通，均可接收短信。
+- 发布配套的 Android sparse rootfs 和 GPT／启动链／boot 基础包；rootfs 内不包含任何单机备份。
+- 移除 NetworkManager 停用命令及其热点接管服务，保留 NetworkManager 管理 Wi‑Fi 热点与 USB DHCP。
+- 内置 `ufi103s-modemmanager`，可持久屏蔽／恢复 ModemManager，便于 VoCat 独占 modem；禁用、启用时 USB 与 Wi‑Fi 网络均保持运行。
+- 冷启动自动加载 `qcom_wcnss_pil`、`wcn36xx`，修复首次启动后缺少 `wlan0` 的问题。
+- V02 本地整盘重刷、单独恢复同机四个校准/NV 分区后，USB DHCP、Wi‑Fi 热点、密码 SSH、蜂窝驻网与 ModemManager 开关实测通过；按本次操作要求未进行整盘回读。V03 尚未对本版单独重刷测试。
+- 延续此前设备使用者的短信测试记录：Saily eSIM 小白卡（`+1`）漫游中国移动、A1 eSIM 小白卡（`+385`）与 HahaSim 实体 SIM（`+852`）漫游中国联通，均可接收短信；**这些卡尚未针对本版重新测试**。
 
 早期排障背景见 [技术复盘](docs/POSTMORTEM.md)。

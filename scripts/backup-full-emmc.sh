@@ -7,7 +7,10 @@ export LC_ALL=C.UTF-8
 usage() {
     cat <<'EOF'
 用法：
-  ./scripts/backup-full-emmc.sh [选项] /绝对路径/新备份目录
+  ./scripts/backup-full-emmc.sh [选项] /仓库外/板号/bak-15位IMEI
+
+备份目录必须命名为 bak-<15位IMEI>；先从机身标签或原系统核对 IMEI。
+9008 模式无法仅凭目录名核实正在连接的设备身份，请勿猜测 IMEI。
 
 选项：
   --loader FILE       指定 Qualcomm Firehose loader
@@ -65,6 +68,30 @@ if [[ -z "$target_dir" ]]; then
     exit 2
 fi
 
+backup_name="$(basename -- "$target_dir")"
+if [[ ! "$backup_name" =~ ^bak-([0-9]{15})$ ]]; then
+    echo '备份目录必须命名为 bak- 后接 15 位 IMEI。' >&2
+    exit 2
+fi
+imei="${BASH_REMATCH[1]}"
+if [[ "$imei" == 000000000000000 ]]; then
+    echo 'IMEI 不能全为 0；请核对设备标签。' >&2
+    exit 2
+fi
+check_sum=0
+for ((index=0; index<15; index++)); do
+    digit=$((10#${imei:index:1}))
+    if ((index % 2 == 1)); then
+        digit=$((digit * 2))
+        if ((digit > 9)); then digit=$((digit - 9)); fi
+    fi
+    check_sum=$((check_sum + digit))
+done
+if ((check_sum % 10 != 0)); then
+    echo 'IMEI 校验位不正确，请重新核对设备标签。' >&2
+    exit 2
+fi
+
 edl_bin="${EDL:-edl}"
 lsusb_bin="${LSUSB:-lsusb}"
 
@@ -90,7 +117,7 @@ if [[ -n "$loader" && ! -s "$loader" ]]; then
     exit 1
 fi
 
-if [[ -e "$target_dir" ]]; then
+if [[ -e "$target_dir" || -L "$target_dir" ]]; then
     echo "目标已存在，为避免覆盖而退出：$target_dir" >&2
     exit 1
 fi
@@ -98,6 +125,14 @@ fi
 target_parent="$(dirname -- "$target_dir")"
 if [[ ! -d "$target_parent" || ! -w "$target_parent" ]]; then
     echo "目标父目录不存在或不可写：$target_parent" >&2
+    exit 1
+fi
+target_parent="$(realpath -e -- "$target_parent")"
+target_dir="$target_parent/$backup_name"
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ "$target_dir/" == "$repo_root/"* ]] \
+    || [[ "$(git -C "$target_parent" rev-parse --is-inside-work-tree 2>/dev/null || true)" == true ]]; then
+    echo '拒绝把含 IMEI 和校准数据的备份放入 Git 仓库。' >&2
     exit 1
 fi
 
@@ -141,6 +176,7 @@ fi
 cat >"$target_dir/BACKUP_INFO.txt" <<EOF
 backup_format=ufi103s-edl-full-emmc
 created_utc=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+imei=$imei
 disk_bytes=$disk_bytes
 disk_hex=$disk_hex
 usb_mode=05c6:9008

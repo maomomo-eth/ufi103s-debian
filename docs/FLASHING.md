@@ -15,18 +15,19 @@ lsusb -d 05c6:9008
 
 只允许**一台** `05c6:9008` 设备映射到本机。KVM 虚拟机每次 USB ID 切换都要重新映射，见 [USB 映射](KVM_USB.md)。刷写期间请保持供电和 USB 连接；不要通过 fastboot 写分区。
 
-准备当前仓库的脚本、[bkerler/edl](https://github.com/bkerler/edl)、`uv`、`rg`、`lsusb`、`sha256sum`。从 [v2.1.0 Release](https://github.com/maomomo-eth/ufi103s-debian/releases/tag/v2.1.0) 下载两个文件：`ufi103s-debian-v2.1.0-base.tar.gz`（GPT、启动链、boot 及 `SHA256SUMS`）与已实测的 `rootfs-debian12-usb-wifi-ssh-local-network.img`。解压基础包并指定其实际路径：
+准备当前仓库的脚本、[bkerler/edl](https://github.com/bkerler/edl)、`uv`、`rg`、`lsusb`、`sha256sum`。从 [v2.2.0 Release](https://github.com/maomomo-eth/ufi103s-debian/releases/tag/v2.2.0) 下载两个文件：`ufi103s-debian-v2.2.0-base.tar.gz`（GPT、启动链、boot 及 `SHA256SUMS`）与已实测的 `rootfs-debian12-usb-wifi-ssh-vocat-mm-wifi.img`。解压基础包并指定其实际路径：
 
 ```bash
 export EDL=/绝对路径/edl
-export BACKUP=/仓库外/stock-本机-日期
-export RELEASE=/绝对路径/ufi103s-debian-v2.1.0-base
-export ROOTFS=/绝对路径/rootfs-debian12-usb-wifi-ssh-local-network.img
+read -r -p '请核对设备标签并输入 15 位 IMEI：' IMEI
+export BACKUP="/仓库外/ufi103s-v02/bak-$IMEI"
+export RELEASE=/绝对路径/ufi103s-debian-v2.2.0-base
+export ROOTFS=/绝对路径/rootfs-debian12-usb-wifi-ssh-vocat-mm-wifi.img
 export PREPARE=/仓库外/首次离线组装-本机-日期
 export FLASH=/仓库外/正式刷机-本机-日期
 ```
 
-以上目录的父目录必须已存在，`BACKUP`、`PREPARE`、`FLASH` 自身**不得已存在**；它们必须位于 Git 仓库外。不要直接把 rootfs `.img` 当成全盘执行 `edl wf`。下载后按实际位置填写绝对路径，不必把镜像放入 Git 仓库。
+将 `ufi103s-v02` 换成实际板号（例如 V03）；从标签或原系统核对 IMEI，不能靠 EDL 自动确认。以上目录的父目录必须已存在，`BACKUP`、`PREPARE`、`FLASH` 自身**不得已存在**；它们必须位于 Git 仓库外。同一板号下每台设备各有自己的 `bak-<IMEI>` 目录，备份和校准分区绝不混用。不要直接把 rootfs `.img` 当成全盘执行 `edl wf`。下载后按实际位置填写绝对路径，不必把镜像放入 Git 仓库。
 
 ## 2. 完整备份原机
 
@@ -45,12 +46,12 @@ EDL="$EDL" ./scripts/backup-full-emmc.sh "$BACKUP"
 
 ```bash
 (cd "$RELEASE" && sha256sum -c SHA256SUMS)
-printf '%s  %s\n' '5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50' "$ROOTFS" | sha256sum -c -
+printf '%s  %s\n' '65fa6962951cafd1fc38d886d6e8df714904b61c2443cdfb7c4e436f3c31e2d6' "$ROOTFS" | sha256sum -c -
 
 ./scripts/flash-edl-full-emmc.sh \
   --backup-dir "$BACKUP" --release-dir "$RELEASE" \
   --rootfs-override "$ROOTFS" \
-  --rootfs-sha256 5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50 \
+  --rootfs-sha256 65fa6962951cafd1fc38d886d6e8df714904b61c2443cdfb7c4e436f3c31e2d6 \
   --output-dir "$PREPARE" --prepare-only
 ```
 
@@ -64,13 +65,13 @@ printf '%s  %s\n' '5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08af
 EDL="$EDL" ./scripts/flash-edl-full-emmc.sh \
   --backup-dir "$BACKUP" --release-dir "$RELEASE" \
   --rootfs-override "$ROOTFS" \
-  --rootfs-sha256 5c1770b27d70aae9a4c475b6b8f8a1f037b2d7bc1f11f38ddfaaa995f08aff50 \
+  --rootfs-sha256 65fa6962951cafd1fc38d886d6e8df714904b61c2443cdfb7c4e436f3c31e2d6 \
   --output-dir "$FLASH" --reset
 ```
 
 脚本再次组装镜像，比对当前设备的原厂 GPT 和同机 NV，输入指定确认字符串后才执行 EDL `wf` 全盘写入；随后单独恢复 `fsc/fsg/modemst1/modemst2` 并逐项回读，再 EDL `rf` **回读整块 eMMC** 与目标镜像逐字节比较。只有这些都成功后 `--reset` 才让设备尝试启动。镜像 `debian-v2-full-emmc.bin` 与 `device-readback.bin` 都留在 `$FLASH`，含私有数据，绝不上传。任何阶段失败，保持 9008、保存日志、不要强行启动部分写入的系统。
 
-> 已刷入 Debian 的设备重刷时 GPT 已变，首次原厂脚本会拒绝；必须单独核对当前 GPT、容量、同机校准身份，才能执行新的全盘操作。本仓库不提供跳过身份校验的一键重刷参数。本次 V02 重刷日志与回读保存在仓库外，没有当作公开镜像发布。
+> 已刷入 Debian 的设备重刷时 GPT 已变，首次原厂模式会拒绝。只有对**同一台设备**且原厂备份完整可用、留有原厂 9008 备份时的 `edl-printgpt.log` 时，才能使用 `--reflash-debian`。此模式核对当前 Debian GPT、eMMC 容量、原厂 EDL 硬件串号及 `fsc`，不跳过身份校验。Debian GPT 没有 `persist` 分区；基带运行后也可能改写 `fsg/modemst1/modemst2`，因此不要求这些内容仍与旧原厂备份逐字节相同。刷写仍会用原厂备份恢复四个校准/NV 分区并整盘回读。请先离线执行 `--prepare-only`；正式重刷必须使用一个新的私有 `--output-dir`，把上面的正式刷机命令另加 `--reflash-debian`。v2.2.0 在 V02 的本地功能测试成功，但那次按使用者要求跳过了整盘回读；不能把该次测试称为已完成整盘验证。
 
 ## 5. 首次启动、USB 与 SSH
 
@@ -81,6 +82,6 @@ ssh user@192.168.68.1
 sudo ufi103s-modem-test
 ```
 
-初始用户为 `user/1`。首启自动生成**本机** SSH 主机密钥，不生成登录强密码；SSH 接受 USB/Wi‑Fi 密码登录，但阻止蜂窝接口接入。请自行修改默认用户和热点密码。独立关闭 NetworkManager 的脚本仍保留热点/USB DHCP；VoCat 使用方式见[短信转发说明](SMS_TROUBLESHOOTING.md)。
+初始用户为 `user/1`。首启自动生成**本机** SSH 主机密钥，不生成登录强密码；SSH 接受 USB/Wi‑Fi 密码登录，但阻止蜂窝接口接入。请自行修改默认用户和热点密码。使用 VoCat 时保持 NetworkManager 运行，执行镜像**内置**的 `sudo ufi103s-modemmanager disable`；恢复方法见[短信转发说明](SMS_TROUBLESHOOTING.md)。
 
 如果只有存储回读通过、没有 USB 或热点，不能称为系统启动成功；先保留 EDL 回读与错误日志，再从 ADB/串口检查启动服务。
