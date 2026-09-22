@@ -154,7 +154,7 @@ step "2/6 选择硬件板号"
 echo "请选择随身 Wi-Fi 的硬件板号（拆开外壳或机身 PCB 上标注）："
 echo "  [1] UFI103S_V02 (常见黑色/白色无屏幕 UFI103S，eMMC 3.64GB)"
 echo "  [2] UFI103S_V03 (部分改款版本，eMMC 3.64GB)"
-echo "  [3] 手动输入其他板号 (例如 UFI001, UFI003, MS917 等 MSM8916 设备)"
+echo "  [3] 手动输入其他板号 (仅限 UFIX0X 系列，如 UFI001, UFI003 等)"
 echo ""
 board=""
 board_name=""
@@ -171,12 +171,12 @@ while [[ -z "$board" ]]; do
             board_name="UFI103S_V03"
             ;;
         3)
-            read -r -p "请输入自定义板号 (如 UFI001): " custom_board
+            read -r -p "请输入自定义板号 (如 UFI001/UFI003): " custom_board
             custom_board="$(echo "$custom_board" | tr -d '[:space:]')"
             if [[ -z "$custom_board" ]]; then
                 warn "板号不能为空！"
             elif [[ ! "$custom_board" =~ ^[A-Za-z0-9_-]+$ ]]; then
-                warn "板号仅支持字母、数字、下划线和连字符 (如 UFI001, MS917)！"
+                warn "板号仅支持字母、数字、下划线和连字符 (如 UFI001, UFI003)！"
             else
                 board="$(echo "$custom_board" | tr '[:upper:]' '[:lower:]')"
                 board_name="$(echo "$custom_board" | tr '[:lower:]' '[:upper:]')"
