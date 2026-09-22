@@ -154,18 +154,47 @@ step "2/6 选择硬件板号"
 echo "请选择随身 Wi-Fi 的硬件板号（拆开外壳或机身 PCB 上标注）："
 echo "  [1] UFI103S_V02 (常见黑色/白色无屏幕 UFI103S，eMMC 3.64GB)"
 echo "  [2] UFI103S_V03 (部分改款版本，eMMC 3.64GB)"
+echo "  [3] 手动输入其他板号 (例如 UFI001, UFI003, MS917 等 MSM8916 设备)"
 echo ""
 board=""
+board_name=""
 while [[ -z "$board" ]]; do
-    read -r -p "请输入选项 [1 或 2] (默认: 1): " input_board
+    read -r -p "请输入选项 [1/2/3 或直接输入板号] (默认: 1): " input_board
     input_board="${input_board:-1}"
     case "$input_board" in
-        1|v02|V02|ufi103s_v02|UFI103S_V02) board="v02"; board_name="UFI103S_V02" ;;
-        2|v03|V03|ufi103s_v03|UFI103S_V03) board="v03"; board_name="UFI103S_V03" ;;
-        *) warn "输入无效，请输入 1 或 2。" ;;
+        1|v02|V02|ufi103s_v02|UFI103S_V02)
+            board="ufi103s-v02"
+            board_name="UFI103S_V02"
+            ;;
+        2|v03|V03|ufi103s_v03|UFI103S_V03)
+            board="ufi103s-v03"
+            board_name="UFI103S_V03"
+            ;;
+        3)
+            read -r -p "请输入自定义板号 (如 UFI001): " custom_board
+            custom_board="$(echo "$custom_board" | tr -d '[:space:]')"
+            if [[ -z "$custom_board" ]]; then
+                warn "板号不能为空！"
+            elif [[ ! "$custom_board" =~ ^[A-Za-z0-9_-]+$ ]]; then
+                warn "板号仅支持字母、数字、下划线和连字符 (如 UFI001, MS917)！"
+            else
+                board="$(echo "$custom_board" | tr '[:upper:]' '[:lower:]')"
+                board_name="$(echo "$custom_board" | tr '[:lower:]' '[:upper:]')"
+            fi
+            ;;
+        *)
+            # 直接输入了板号名称（如输入了 UFI001 或 ufi001）
+            clean_board="$(echo "$input_board" | tr -d '[:space:]')"
+            if [[ "$clean_board" =~ ^[A-Za-z0-9_-]+$ ]]; then
+                board="$(echo "$clean_board" | tr '[:upper:]' '[:lower:]')"
+                board_name="$(echo "$clean_board" | tr '[:lower:]' '[:upper:]')"
+            else
+                warn "输入无效，请输入 1/2/3 或有效的板号字符串。"
+            fi
+            ;;
     esac
 done
-success "已选择板号：$board_name"
+success "已确认板号：$board_name (归档标识: $board)"
 
 # 3. 输入并校验 IMEI
 step "3/6 输入并校验设备 IMEI"
@@ -183,13 +212,18 @@ done
 success "IMEI 校验通过：$imei"
 
 # 规划目录路径
-backup_dir="$workspace_parent/ufi103s-${board}/bak-$imei"
+if [[ "$board" == ufi103s-* ]]; then
+    board_dir="$board"
+else
+    board_dir="ufi-${board}"
+fi
+backup_dir="$workspace_parent/${board_dir}/bak-$imei"
 work_dir="$workspace_parent/work/flash-$imei"
 release_dir="$repo_dir/release/v2.2.0/ufi103s-debian-v2.2.0-base"
 rootfs_override="$repo_dir/release/v2.2.0/rootfs-debian12-usb-wifi-ssh-vocat-mm-wifi.img"
 rootfs_sha256="65fa6962951cafd1fc38d886d6e8df714904b61c2443cdfb7c4e436f3c31e2d6"
 
-mkdir -p "$workspace_parent/ufi103s-${board}" "$workspace_parent/work" "$work_dir"
+mkdir -p "$workspace_parent/${board_dir}" "$workspace_parent/work" "$work_dir"
 
 # 4. 原厂全盘物理备份
 step "4/6 原厂全盘备份检查与执行"
