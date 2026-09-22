@@ -1,22 +1,8 @@
-# 第三方组件说明
+# Debian 12 发行镜像使用的第三方文件
 
-私有 Release 包含来自本地第三方归档的 Debian rootfs、Qualcomm firmware、bootloader 和 kernel。原始批处理文件标注作者为 `jsbsbxjxh66`。
+从 `debian12-jsbsbxjxh66.7z`（SHA-256：`e03ef31e2f7e314ffc0a11da42b3068dbca6ac34102b123e807738283cf1f4ef`）中，实际选用了以下两个文件；路径均为归档内的相对路径：
 
-仓库中的文档和原创脚本不改变这些第三方二进制的归属。
+1. `debian12-酷安-jsbsbxjxh66/jsbsbxjxh66/rootfs.img`（SHA-256：`9d8ba302f5a717b5e7423987930c984a0c776e9382b7a035c7526a8d35c2f505`）。作为 Debian 12 rootfs 的输入；补齐 MPSS、清理预生成身份并加入 USB/Wi‑Fi/SSH 配置后，形成发布的 `rootfs-debian12-usb-wifi-ssh-local-network.img`。发布文件与原始文件**不相同**。
+2. `debian12-酷安-jsbsbxjxh66/jsbsbxjxh66-boot/msm8916-jsbsbxjxh66-ufix0x-1.0.dtb-boot.img`（SHA-256：`4d992bb0210a4cb7ce371a378e35580b7d21b5764a2573c73e56805a2ee32af5`）。发布包中的 `boot-debian12-6.4-ufix0x.img` 与它逐字节相同。
 
-Debian 11 第三方归档 SHA-256：
-
-```text
-1ec268a72c679d0126d4b94f93141efa6d0220eebfcfa8ec8324e83a340e2593
-```
-
-Debian 12 第三方归档：
-
-```text
-文件：debian12-jsbsbxjxh66.7z
-SHA-256：e03ef31e2f7e314ffc0a11da42b3068dbca6ac34102b123e807738283cf1f4ef
-```
-
-当前 boot 和 rootfs 以 Debian 12 归档为基础。Debian 12 原始 rootfs 缺少完整 MPSS 文件，因此从已验证的 Debian 11 rootfs 复用了 `mba.mbn`、`modem.mdt` 和 `modem.b*` 文件集。GPT 与启动链文件经逐文件比较，与实机验证通过的 Debian 11 基线一致。
-
-发布构建没有使用设备分区回读或设备运行中的 rootfs；目标设备自己的校准数据和网络配置未进入发布包。
+这份归档里的其他 boot 变体、刷机脚本和 Windows 工具未用于当前发行镜像；GPT、启动链及后补的 MPSS 不归为这份归档的实际选用文件。
