@@ -83,3 +83,6 @@ sudo ufi103s-modem-test
 
 > [!WARNING]
 > 遇到短信收发异常时，请先排查是否为运营商网络与 VoLTE 依赖原因。**切勿因为单张卡短信问题而盲目刷入网传的其他型号基带或校准文件**！
+
+> [!TIP]
+> 在非 UFI103S 板（如 UFI001C 类）上的 SIM 实测结果，以及 VoCat 给新卡自动开启飞行模式的问题，见 [非 UFI103S 板实测记录](UFI001C_FIELD_NOTES.md)。
