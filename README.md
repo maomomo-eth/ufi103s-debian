@@ -189,6 +189,7 @@ sudo userdel -r user
 | 🖥️ **[KVM / virt-manager USB 穿透 (docs/KVM_USB.md)](docs/KVM_USB.md)** | 解决虚拟化环境下 9008 与 Debian RNDIS 切换时的 USB 重枚举穿透问题 |
 | 🔬 **[Debian 12 构建记录 (docs/DEBIAN12.md)](docs/DEBIAN12.md)** | 历史根文件系统修改、DTB 补丁、Firmware 提取与打包过程 |
 | 📝 **[故障排查与复盘 (docs/POSTMORTEM.md)](docs/POSTMORTEM.md)** | 历史红灯不开机、基带未就绪、DTB 内存节点缺失等问题的踩坑复盘 |
+| 🧪 **[非 UFI103S 板实测记录 (docs/UFI001C_FIELD_NOTES.md)](docs/UFI001C_FIELD_NOTES.md)** | 社区反馈：UFI001C 类板子的基带匹配、SIM 实测、VoCat 新卡飞行模式与会卡死内核的操作 |
 
 ---
 
